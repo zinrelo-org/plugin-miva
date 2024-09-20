@@ -1,0 +1,1752 @@
+<MvCOMMENT>
+	/*******/
+	06/20/2019 :: Added 3 New Features
+	06/25/2020 :: Bug Fixes for issues while applying reward to cart in incart redemption
+	09/20/2020 :: Free Shipping Bug Fixed and Also Added Feature for Free Product redemption
+	09/29/2020 :: Fixed issue related to 0 point user reward redemtion.
+	06/01/2021 :: Enhancement to the purchase tracking functionality.
+	06/01/2023 :: Fix Item Assignment.
+	05/08/2023 :: Fixed Issue related to Invoice Page Reported By Miva Support.
+	/*******/
+</MvCOMMENT>
+<MvFUNCTION NAME = "Module_Description" PARAMETERS = "module var" STANDARDOUTPUTLEVEL = "">
+	<MvASSIGN NAME = "l.module:code"		VALUE = "zinrelo">
+	<MvASSIGN NAME = "l.module:name"		VALUE = "Zinrelo">
+	<MvASSIGN NAME = "l.module:provider"	VALUE = "zinrelo">
+	<MvASSIGN NAME = "l.module:version"		VALUE = "9.106">
+	<MvASSIGN NAME = "l.module:api_ver"		VALUE = "9.04">
+	<MvASSIGN NAME = "l.module:features"	VALUE = "util,vis_util,data_store,component,not_order,not_orderitem,vis_order,json,fulfill,system">
+	<MvASSIGN NAME = "l.module:description"	VALUE = "Zinrelo offers an easy to use loyalty rewards program that comes pre-configured with the right features for most businesses. Here are few features.Fully customizable, completely flexible, Loyalty Tiers, Business rules engine, Flexible redemption options, Custom email and in-built notifications, ROI based reporting, powerful API access, Full service Option etc.">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Install_Store" PARAMETERS = "module var" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+		<MvIF EXPR="{Zinrelo_API_Store_Table_Exists(g.Store_Table_Prefix $ 'Zinrelo_OrderExport_Log')  EQ 0}">
+			<MvQUERY NAME   = "Merchant"    QUERY   = "{ 'CREATE TABLE ' $  g.Store_Table_Prefix $ 'Zinrelo_OrderExport_Log( 
+														logid          	int(11) NOT NULL  primary key AUTO_INCREMENT,  
+														order_id        int(11), 
+														exp_date     	VARCHAR(254),
+														status     		int(1)
+														)' }">
+			<MvIF EXPR = "{ g.MvQUERY_Error }">
+				<MvFUNCTIONRETURN VALUE = "{ [ g.Module_Library_Utilities ].Error( 'Error in Table Creation Zinrelo_OrderExport_Log', g.MvQUERY_Error ) }">
+			</MvIF>
+		</MvIF>
+		
+		<MvQUERY NAME	= "Merchant" 	QUERY	= "{'CREATE TABLE ' $  g.Store_Table_Prefix $ 'Zinrelo_API_Settings(
+													id  		VARCHAR( 200 ) NOT NULL PRIMARY KEY,
+													url	        varchar(200) NULL,
+													sub_id	    varchar(100) NULL,
+													apiuser	    varchar(100),
+													apipass	    varchar(100),
+													enablem     int(1))' }">
+			<MvIF EXPR = "{ g.MvQUERY_Error }">
+				<MvFUNCTIONRETURN VALUE = "{ [ g.Module_Library_Utilities ].Error( 'MER-UTL-CST-0003', g.MvQUERY_Error ) }">
+			</MvIF>
+	    <MvASSIGN NAME = "l.iid" VALUE = "101">
+	    <MvASSIGN NAME = "l.url" VALUE = "">
+	    <MvASSIGN NAME = "l.sub_id" VALUE = "">
+	    <MvASSIGN NAME = "l.apiuser" VALUE = "">
+	    <MvASSIGN NAME = "l.apipass" VALUE = "">
+	    <MvASSIGN NAME = "l.enablem" VALUE = "0">
+	    <MvQUERY NAME   = "Merchant"
+				   QUERY  = "{ 'INSERT INTO ' $  g.Store_Table_Prefix $ 'Zinrelo_API_Settings (id,url,sub_id,apiuser,apipass,enablem)
+				   VALUES  (?,?,?,?,?,?)' }"
+					   FIELDS = "l.iid,l.url,l.sub_id,l.apiuser,l.apipass,l.enablem">
+				   
+		<MvIF EXPR = "{ NOT [ g.Module_Feature_TUI_DB ].Item_Load_Code( 'zinrelo', l.null ) }">
+		<MvIF EXPR = "{ NOT [ g.Module_Feature_TUI_MGR ].TemplateManager_Create_Item( 'zinrelo', l.module:code ) }">
+			<MvFUNCTIONRETURN VALUE = 0>
+		</MvIF>
+	</MvIF>
+
+	<MvIF EXPR = "{ NOT [ g.Module_Feature_TUI_DB ].Item_Load_Code( 'zinrelo_transaction', l.null ) }">
+		<MvIF EXPR = "{ NOT [ g.Module_Feature_TUI_MGR ].TemplateManager_Create_Item( 'zinrelo_transaction', l.module:code ) }">
+			<MvFUNCTIONRETURN VALUE = 0>
+		</MvIF>
+	</MvIF>
+	<MvIF EXPR = "{ g.Store:ui_mod:code EQ 'cssui' }">		
+		<MvASSIGN NAME = "l.footer_template_filename" VALUE = "cssui-global-footer.mvc">
+	<MvELSEIF EXPR = "{ g.Store:ui_mod:code EQ 'mmui' }">	
+		<MvASSIGN NAME = "l.footer_template_filename" VALUE = "global-footer.mvc">
+	</MvIF>
+
+	<MvFOREACH ITERATOR = "l.page" ARRAY = "l.pages" COUNT = "{ [ g.Module_Feature_TUI_DB ].PageList_Load_All_Runtime( l.pages ) }">
+		<MvIF EXPR = "{ NOT [ g.Module_Feature_TUI_MGR ].TemplateManager_Page_Assign_Item( l.page, 'zinrelo' ) }">
+			<MvFUNCTIONRETURN VALUE = 0>
+		</MvIF>
+	</MvFOREACH>
+
+	
+
+
+	<MvIF EXPR = "{ NOT [ g.Module_Feature_TUI_DB ].Item_Load_Code( 'hdft', l.item ) }">
+		<MvFUNCTIONRETURN VALUE = 0>
+	</MvIF>
+
+
+	<MvIF EXPR = "{ [ g.Module_Feature_TUI_DB ].ManagedTemplate_Load_Filename( l.footer_template_filename, l.footer_template ) }">
+		<MvIF EXPR = "{ [ g.Module_Feature_TUI_DB ].ManagedTemplateVersion_Load_ID( l.footer_template:current_id, l.footer_managedtemplateversion ) AND
+						( '<mvt:item name="zinrelo" />' IN l.footer_managedtemplateversion:source ) EQ 0 }">
+			<MvASSIGN NAME = "l.source" VALUE = "{ l.footer_managedtemplateversion:source $ asciichar( 10 ) $ '<mvt:item name="zinrelo" />' $ asciichar( 10 ) }">
+			<MvASSIGN NAME = "l.null"	VALUE = "{ NOT [ g.Module_Feature_TUI_MGR ].TemplateManager_Create_ManagedTemplateVersion( l.footer_template,
+																																   l.module:name $ ' Template Code Insertion',
+																																   l.source,
+																																   l.settings,
+																																   l.compile_error ) }">
+		</MvIF>
+	</MvIF>
+
+	<MvIF EXPR = "{ [ g.Module_Feature_TUI_DB ].ManagedTemplate_Load_Filename( 'invc.mvc', l.invc_managedtemplate ) }">
+		<MvIF EXPR = "{ [ g.Module_Feature_TUI_DB ].ManagedTemplateVersion_Load_Template_Current( l.invc_managedtemplate:id, l.invc_managedtemplateversion ) 	AND
+						( '<mvt:item name="zinrelo_transaction" param="l.all_settings:order:id"/>' IN l.invc_managedtemplateversion:source ) EQ 0 													AND
+						( '<mvt:item name="hdft" param="global_footer" />' IN l.invc_managedtemplateversion:source ) GT 0 }">
+			<MvASSIGN NAME = "l.source" VALUE = "{ glosub( l.invc_managedtemplateversion:source, '<mvt:item name="hdft" param="global_footer" />',
+														   asciichar( 10 ) $ asciichar( 9 ) $ asciichar( 9 ) $ '<mvt:item name="hdft" param="global_footer" />' $
+														   asciichar( 10 ) $ asciichar( 9 ) $ asciichar( 9 ) $ '<mvt:item name="zinrelo_transaction" param="l.all_settings:order:id"/>' $
+														   asciichar( 10 ) $ asciichar( 9 ) ) }">
+			<MvASSIGN NAME = "l.null"	VALUE = "{ NOT [ g.Module_Feature_TUI_MGR ].TemplateManager_Create_ManagedTemplateVersion( l.invc_managedtemplate,
+																																   l.module:name $ ' Template Code Insertion',
+																																   l.source,
+																																   l.invc_managedtemplateversion:settings,
+																																   l.compile_error ) }">
+
+			<MvIF EXPR = "{ [ g.Module_Feature_TUI_DB ].Page_Load_Code( 'INVC', l.page ) }">
+				<MvIF EXPR = "{ NOT [ g.Module_Feature_TUI_MGR ].TemplateManager_Page_Assign_Item( l.page, 'zinrelo_transaction' ) }">
+					<MvFUNCTIONRETURN VALUE = 0>
+				</MvIF>	
+			</MvIF>
+		</MvIF>
+	</MvIF>
+	
+	<MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Uninstall_Store" PARAMETERS = "module var" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+	<MvQUERY NAME = "Merchant" QUERY = "{ 'DROP TABLE ' $  g.Store_Table_Prefix $ 'Zinrelo_API_Settings' }">
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Upgrade_Store" PARAMETERS = "module var, version" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Utility_Validate" PARAMETERS = "module var" STANDARDOUTPUTLEVEL = "">
+<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Utility_Update" PARAMETERS = "module var" STANDARDOUTPUTLEVEL = "">
+
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Utility_Head" PARAMETERS = "module var, tab" STANDARDOUTPUTLEVEL = "">
+<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Utility_Tabs" PARAMETERS = "module var" STANDARDOUTPUTLEVEL = "">
+<MvFUNCTIONRETURN VALUE = "ZinreloAPI: Zinrelo">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Utility_Content" PARAMETERS = "module var, tab, load_fields" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace">
+	<MvCOMMENT>
+		|
+		| Settings Area
+		|
+	</MvCOMMENT>
+	<MvIF EXPR = "{ l.tab EQ 'ZinreloAPI'}">
+		<MvIF EXPR="{g.Zinrelo_API_SettingsEdit}">
+			<MvASSIGN NAME = "l.field:url" VALUE = "{ g.Zinrelo_API_Settings:url }">
+			<MvASSIGN NAME = "l.field:sub_id" VALUE = "{ g.Zinrelo_API_Settings:sub_id }">
+			<MvASSIGN NAME = "l.field:apiuser" VALUE = "{ g.Zinrelo_API_Settings:apiuser }">
+			<MvASSIGN NAME = "l.field:apipass" VALUE = "{ g.Zinrelo_API_Settings:apipass }">
+			<MvASSIGN NAME = "l.field:enablem" VALUE = "{ g.Zinrelo_API_Settings:enablem }">
+			<MvIF EXPR = "{ NOT Zinrelo_API_Settings_Update( l.field ) }">
+				<MvFUNCTIONRETURN VALUE = 0>
+			</MvIF>
+		</MvIF>
+		<style>
+			.apiorderbutton{background: #1eabbd;border-color: #2ebbcd;border:0px;padding:8px 15px;color:#fff;border-radius:3px;cursor:pointer}
+			.tabledetails{background-color:#fff;border:0px}
+			.apitable {
+				border-collapse: collapse;
+				width: 100%;
+			}
+
+			.apitable th, .apitable td {
+				text-align: left;
+				padding: 8px;
+			}
+
+			.apitable tr:nth-child(even){background-color: #f2f2f2}
+
+			.apitable th {
+				background-color: #9a2629;
+				color: white;
+			}
+		</style>
+		<script language="JavaScript">
+			<!--
+			function ZinreloAPI() {
+					document.forms[ Screen ].elements['Action'].value = '';
+					document.forms[ Screen ].elements['Have_Fields'].value = 1;
+					document.getElementById('APICustomeBisRepOrderID').value = 1;
+					document.forms[Screen].submit();
+				}
+			function zinreloSettingsEdit(field) {
+					DisableButtons();
+					
+					document.forms[ Screen ].elements['Zinrelo_API_SettingsEdit'].value = field;
+					document.forms[ Screen ].elements['Action'].value = '';
+					document.forms[ Screen ].elements['Have_Fields'].value = 1;
+					document.forms[ Screen ].submit();
+			}
+			function zinreloEnableButton()
+			{
+				if(document.getElementById('zinreloapiuser').value && document.getElementById('zinreloapipass').value)
+					document.getElementById('zinapiorderbutton').disabled = false;
+				else
+					document.getElementById('zinapiorderbutton').disabled = true;
+
+			}
+			
+		//-->
+		</script>
+		<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+		<table width="100%"  border="0" cellpadding="0" cellspacing="0" class="tabledetails">
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+			<tr>
+				<td>
+					<div style="float:left"><h2>Zinrelo</h2></div>
+					<div style="float:right" valign="middle">Version: <MvEVAL EXPR="{ l.module:version }"></div>
+					<input type="hidden" name="Zinrelo_API_SettingsEdit" value="0">
+					<input type="hidden" name="Zinrelo_API_Settings:url" value="0">
+					<table border=0 cellpadding=10 id="bldmaincontent" cellspacing=0 width="100%" class="ManageTemplates">
+						<tr>
+							<td>&nbsp;</td>
+						</tr>
+						<tr>
+						  <td class="label" width="100">Enable:</td>  
+						  <td>
+							<MvIF EXPR="{l.fields[1]:enablem}">
+								<input type="checkbox"  name="Zinrelo_API_Settings:enablem" onchange="zinreloEnableButton()" value="1	"  checked>
+							<MvElse>
+								<input type="checkbox"  name="Zinrelo_API_Settings:enablem" onchange="zinreloEnableButton()" value="1">
+							</MvIF>
+						  </td>
+						</tr>
+                        
+						<tr>
+						  <td class="label">Partner ID: </td>  
+						  <td>
+							<input type="text" id="zinreloapiuser"  onkeyup="zinreloEnableButton()" style="max-width:400px;padding:5px;width:100%;" name="Zinrelo_API_Settings:apiuser" value="{ l.fields[1]:apiuser }">
+						  </td>
+						</tr>
+						<tr>
+						  <td class="label">API Key: </td>  
+						  <td>
+							<input type="text" id="zinreloapipass" onkeyup="zinreloEnableButton()" style="max-width:400px;padding:5px;width:100%;" name="Zinrelo_API_Settings:apipass" value="{ l.fields[1]:apipass }">
+						  </td>
+						</tr>
+						<tr>
+						  <td class="label">Award points for purchase when order status is: </td>  
+						  <td>
+							<select type="text" class="orderstatusdropdown" id="zinreloapipass" onChange="zinreloEnableButton()" style="max-width:400px;padding:5px;width:100%;box-sizing: initial;" name="Zinrelo_API_Settings:sub_id">
+								<MvIF EXPR="{l.fields[1]:sub_id EQ 1}">
+									<option value="0" >Order Placed</option>
+									<option value="1" selected>Order Shipped</option>
+								<MvELSE>
+									<option value="0" selected>Order Placed</option>
+									<option value="1" >Order Shipped</option>
+								</MvIF>
+								
+							</select>
+						  </td>
+						</tr>
+						<tr id="orderplacedinfo">
+							<td class="label"></td> <td> <b>1) Order Placed:</b> For orders via website, points will be awarded as soon as an order is placed. For manual orders, points will be awarded when the status of the order is changed to 'Processing'.
+							<br><br>
+							<b>2) Order Shipped:</b> Points will be awarded when the status of the order is changed to 'Shipped'.<br><br>
+							<b>Note:</b><br>
+							1) Order status changes to 'Processing' when at least one shipment is created for the order.
+							2) Order status changes to 'Shipped' when all the items in the order have been shipped.
+							</td>
+							<td width="50%"></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>
+								<button type="button" class="apiorderbutton" id="zinapiorderbutton" onClick="zinreloSettingsEdit(101)" disabled/>Save Settings</button>
+								<MvIF EXPR="{g.Zinrelo_API_SettingsEdit}"><div style="background:#dff0d8;color:#3c763d;padding: 9px;display: inline-flex;border-radius: 3px;" id="zinsuccessmsg">Settings saved successfully.</div><script>setTimeout(function() {document.getElementById('zinsuccessmsg').style.display='none'},3000);</script></MvIF>
+							</td>
+						</tr>
+					 </table>
+				</td>
+			</tr>
+		</table>
+	</MvIF>
+<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "StoreUtilityModule_Validate" PARAMETERS = "module var" STANDARDOUTPUTLEVEL = "">
+<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "StoreUtilityModule_Action" PARAMETERS = "module var" STANDARDOUTPUTLEVEL = "">
+<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "StoreUtilityModule_Screen" PARAMETERS = "module var" STANDARDOUTPUTLEVEL = "">
+<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "StoreUtilityModule_LeftNavigation"  PARAMETERS = "module var, indent" STANDARDOUTPUTLEVEL = "">
+<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+<MvCOMMENT> system </MvCOMMENT>
+
+<MvFUNCTION NAME="SystemModule_Action" PARAMETERS="module var, action" STANDARDOUTPUTLEVEL="">
+	
+	
+	<MvIF EXPR="{g.Action EQ 'ZRRPD'}">
+		<MvASSIGN NAME = "l.isZinRewardApplied" VALUE = "FALSE">
+		<MvFOREACH ITERATOR = "l.basketcharge" ARRAY = "l.basketcharges" COUNT = "{ [ g.Module_Library_DB ].BasketChargeList_Load_Basket(g.Basket:basket_id,l.basketcharges) }">
+			<MvIF EXPR="{'zinrelo_' CIN l.basketcharge:type}">
+				<MvASSIGN NAME="l.isZinRewardApplied" VALUE = "TRUE">
+			</MvIF>
+		</MvFOREACH>
+		
+		<MvASSIGN NAME="l.discountcode" value="{'zinrelo_'$g.zinrewards}">
+		<MvASSIGN NAME="l.checkBaskDiscount" VALUE="{[ g.Module_Library_DB ].BasketCharge_Total_Type(g.Basket:basket_id,l.discountcode)}">
+		<MvIF EXPR="{l.checkBaskDiscount EQ '0.00' AND l.isZinRewardApplied EQ 'FALSE'}">
+			<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+			<MvASSIGN NAME = "l.redemption_ids"  VALUE="{g.zinrewards}">
+			<MvASSIGN NAME = "g.headers" VALUE = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+			<MvASSIGN NAME = "g.headers" VALUE = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+			<Mvcall method="GET" 
+					HEADERS= "{ g.headers }"  
+					action="https://api.zinrelo.com/v1/loyalty/redemptions" 
+					fields="l.redemption_ids">
+					<MvASSIGN Name="l.zin_redeem_result" VALUE= "{s.callvalue}" />
+			</Mvcall>
+
+			<MvAssign name="l.result" value="{miva_json_decode(l.zin_redeem_result, l.rewardjson)}">
+			<MvFOREACH ITERATOR = "l.datavalue" ARRAY = "l.rewardjson:data" INDEX = "l.pos">
+				<MvIF EXPR="{l.datavalue:redemption_value OR l.datavalue:redemption_type EQ 'Free Shipping' OR l.datavalue:redemption_type EQ 'Product Redemption'}">
+					<MvASSIGN NAME = "l.formatted_total" VALUE = "{ [ g.Module_Library_DB ].Basket_Total( g.Basket:basket_id ) ROUND 2 }">
+					<MvASSIGN NAME="l.ebis_amount" VALUE="{l.datavalue:redemption_value}">
+					<MvIF EXPR="{l.datavalue:redemption_type EQ 'Percentage Discount'}">
+						<MvASSIGN NAME="l.ebis_amount" VALUE="{(l.formatted_total*l.ebis_amount)/100}">
+						<MvASSIGN NAME="l.ebis_amount" VALUE="{l.ebis_amount ROUND 2}">
+					<MvELSE>
+						<MvASSIGN NAME="l.ebis_amount" VALUE="{l.ebis_amount ROUND 2}">
+					</MvIF>
+
+
+
+					<MvDO file="{g.Module_Library_DB}" name="l.result" value="{Module_Load_Code(l.module:code, l.module)}" />
+					<MvASSIGN NAME = "l.basketcharge:basket_id"			VALUE = "{g.Basket:basket_id}">
+					<MvASSIGN NAME = "l.basketcharge:module_id"			VALUE = "{l.module:id}">
+					<MvASSIGN NAME = "l.basketcharge:type"				VALUE = "{l.discountcode}">
+					<MvASSIGN NAME = "l.basketcharge:descrip"			VALUE = "{l.datavalue:redemption_name}">
+					<MvIF EXPR="{g.zinrewards_flexible}">	
+						<MvASSIGN NAME="l.ebis_redpointvalue"  VALUE="{l.datavalue:redemption_value/l.datavalue:allowed_redeem_points}">
+						<MvASSIGN NAME="l.ebis_amount" VALUE="{g.zinrewards_flexible * l.ebis_redpointvalue}">
+						<MvIF EXPR="{l.formatted_total LT l.ebis_amount}">
+							<MvASSIGN NAME="g.zinrewards_flexible" VALUE="{ceil(l.formatted_total/l.ebis_redpointvalue)}">
+							<MvASSIGN NAME="l.ebis_amount" VALUE="{l.formatted_total}">
+						</MvIF>
+
+						<MvASSIGN NAME="l.ebis_amount" VALUE="{l.ebis_amount ROUND 2}">
+						<MvASSIGN NAME = "l.basketcharge:descrip"		VALUE = "{l.datavalue:redemption_name $ '('$g.zinrewards_flexible$' Points)'}">
+					
+					</MvIF>
+					<MvASSIGN NAME = "l.basketcharge:tax_exempt"		VALUE = "{ 0 }">
+					<MvASSIGN NAME = "l.basketcharge:amount"			VALUE = "{ '-'$l.ebis_amount }">
+					<MvASSIGN NAME = "l.basketcharge:disp_amt"			VALUE = "{ '-'$l.ebis_amount }">
+					<MvIF EXPR="{l.ebis_amount GT l.formatted_total}">
+						<MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward value cannot be greater that Basket amount.">
+					<MvELSE>
+						<MvIF EXPR="{l.datavalue:redemption_type EQ 'Product Redemption'}">
+							<MvAssign NAME="l.freeProd" VALUE="{l.datavalue:product_id}">
+							<MvDo FILE="{g.Module_Library_DB}" name="l.success" value="{Product_Load_Code(l.freeProd, l.prproduct)}" />
+							<MvIF EXPR="{l.datavalue:product_id AND l.prproduct}">	
+								<MvASSIGN name="l.prproduct:quantity" value="1" />
+								<MvASSIGN name="l.prproduct:price" value="0.00" />
+								<MvASSIGN name="l.prproduct:upsold" value="1" />
+								<MvASSIGN name="l.prproduct:basket_id" value="{g.basket:basket_id}" />
+								<MvDo FILE="{g.Module_Library_DB}" name="l.success" value="{BasketItem_Insert(l.prproduct)}" />
+								<MvIF EXPR = "{ NOT [ g.Module_Library_DB ].BasketCharge_Insert( l.basketcharge ) }">
+									<MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward could not be applied.">
+								<MvELSE>
+									<MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward applied successfully.">
+								</MvIF>
+							<MvELSE>
+									<MvASSIGN NAME="g.zin_redeem_status" VALUE="Free Product cannot find in store.">
+							</MvIF>
+						<MvELSE>
+							<MvIF EXPR = "{ NOT [ g.Module_Library_DB ].BasketCharge_Insert( l.basketcharge ) }">
+								<MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward could not be applied.">
+							<MvELSE>
+								<MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward applied successfully.">
+							</MvIF>
+						</MvIF>
+					</MvIF>
+				</MvIF>
+			</MvFOREACH>
+		<MvELSE>
+			<MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward has been already applied.">
+		</MvIF>
+	</MvIF>
+	<MvIF EXPR="{g.Action EQ 'ZRRPDREM' OR g.Action EQ 'LOGO'}">
+		<MvFOREACH ITERATOR = "l.basketcharge" ARRAY = "l.basketcharges" COUNT = "{ [ g.Module_Library_DB ].BasketChargeList_Load_Basket(g.Basket:basket_id,l.basketcharges) }">
+			<MvIF EXPR="{'zinrelo_' CIN l.basketcharge:type OR 'zinrelofr_' CIN l.basketcharge:type}">
+				<MvASSIGN NAME="l.delBaskDiscount" VALUE="{[ g.Module_Library_DB ].BasketCharge_Delete_Charge(l.basketcharge:charge_id)}">
+				<MvIF EXPR="{l.delBaskDiscount}">
+					<MvASSIGN NAME="g.zin_redeem_status" VALUE="{'<div id="zinrelo_removed_message">Reward removed from cart.</div>'}">
+				</MvIF>
+				<MvAssign NAME="l.zinreloData" VALUE="{Zinrelo_API_Data_By_RID(l.basketcharge:type)}">
+				 <MvIF EXPR="{l.zinreloData[1]:redemption_type EQ 'Product Redemption'}">
+					<MvAssign NAME="l.freeProd" VALUE="{'testprod'}">
+					<MvDo FILE="{g.Module_Library_DB}" name="l.success" value="{Product_Load_Code(l.freeProd, l.prproduct)}" />
+					<MvASSIGN NAME = "l.basketitem_count"		VALUE = "{ [ g.Module_Library_DB ].BasketItemList_Load_Upsold( g.basket:basket_id, l.prbasketitems ) }">
+					<MvIF EXPR = "{ l.basketitem_count GT 0 }">
+						<MvFOREACH ITERATOR = "l.prbasketitem" ARRAY = "l.prbasketitems" COUNT = "{ l.basketitem_count }">
+							<MvIF EXPR = "{ NOT [ g.Module_Library_DB ].Runtime_BasketItem_Delete( l.prproduct, l.prbasketitem ) }">
+							</MvIF>
+						</MvFOREACH>
+					</MvIF>
+				</MvIF>
+			</MvIF>
+		</MvFOREACH>
+		
+	</MvIF>
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="SystemModule_Screen" PARAMETERS="module var, screen" STANDARDOUTPUTLEVEL="">
+	
+	<MvIF EXPR="{g.Screen EQ 'OPAY'}">
+		
+		<MvASSIGN NAME = "l.zinrelo_fields"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.zfields ) }">
+		<MvIF EXPR="{l.zfields[1]:enablem}">
+			<MvASSIGN NAME="l.freeZShippingCheck" VALUE="0">
+			<MvFOREACH ITERATOR = "l.baskCharge" ARRAY = "l.baskCharges" COUNT = "{ [ g.Module_Library_DB ].BasketChargeList_Load_Basket(g.Basket:basket_id,l.baskCharges ) }">
+				<MvIF EXPR="{'zinrelofr_Free_Shipping' EQ l.baskCharge:type}">
+					 <MvASSIGN NAME="l.freeZShippingCheck" VALUE="1">
+				</MvIF>
+			</MvFOREACH>
+			
+			<MvIF EXPR="{l.freeZShippingCheck}">
+			
+				<MvASSIGN NAME="l.checkZBaskShipping" VALUE="{[ g.Module_Library_DB ].BasketCharge_Count_Type(g.Basket:basket_id,'SHIPPING')}">
+				<MvIF EXPR="{l.checkZBaskShipping}">
+					<MvASSIGN NAME="l.freeZShippingAmt" VALUE="0">
+					<MvQUERY NAME   = "Merchant"
+							 QUERY   = "{ 'UPDATE ' $ g.Store_Table_Prefix $ 'BasketCharges SET amount  = ?,disp_amt = ?
+							 WHERE type="SHIPPING" AND basket_id      = ?' }"
+							 FIELDS  = "l.freeZShippingAmt, l.freeZShippingAmt, g.Basket:basket_id">           
+				</MvIF>
+			</MvIF>
+		</MvIF>	
+		
+	</MvIF>
+	
+	<MvIF EXPR="{g.Action EQ 'ORDR' AND (g.Screen EQ 'OSEL' OR g.Screen EQ 'OUSL')}">
+		<MvASSIGN NAME = "l.zinrelo_fields"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.zfields ) }">
+		<MvIF EXPR="{l.zfields[1]:enablem}">
+			<MvASSIGN NAME = "l.redemption_ids"  VALUE="">
+			<MvIF EXPR="{g.Basket:Cust_ID}">
+				<MvIF EXPR="{g.Customer:pw_email}">
+					<MvASSIGN NAME="l.customerEmail"  value="{g.Customer:pw_email}">
+				<MvELSE>
+					<MvASSIGN NAME="l.customerEmail"  value="{g.Customer:bill_email}">
+				</MvIF>	
+			<MvELSE>
+				<MvASSIGN NAME="l.customerEmail"  value="{g.Basket:bill_email}">
+			</MvIF>
+			<MvASSIGN NAME = "l.headers" VALUE = "{ 'partner-id:'$ l.zfields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+			<MvASSIGN NAME = "l.headers" VALUE = "{ l.headers $ 'api-key:' $ l.zfields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+			<MvASSIGN NAME = "l.userredmptionUrl" VALUE = "{'https://api.zinrelo.com/v1/loyalty/users/'$l.customerEmail$'/redemptions'}" />
+			<Mvcall method="GET" 
+						HEADERS= "{l.headers}"  
+						action="{l.userredmptionUrl}">
+						<MvASSIGN Name="l.zin_redeem_result_all" VALUE= "{s.callvalue}" />
+				</Mvcall>	
+				<MvAssign name="l.result" value="{miva_json_decode(l.zin_redeem_result_all, l.rewardjsonall)}">
+				<MvFOREACH ITERATOR = "l.datavalue" ARRAY = "l.rewardjsonall:data:redemptions" INDEX = "l.pos">
+					<MvIF EXPR="{l.datavalue:allowed_redeem_points EQ 0 AND l.datavalue:is_active EQ 1}">
+						<MvIF EXPR="{l.datavalue:redemption_type EQ 'Free Shipping'}">
+							<MvASSIGN NAME="l.discountcode" value="{'zinrelofr_Free_Shipping'}">
+						<MvELSE>
+							<MvASSIGN NAME="l.discountcode" value="{'zinrelofr_'$l.datavalue:redemption_id}">
+						</MvIF>
+						
+						<MvASSIGN NAME="l.checkBaskDiscountCount" VALUE="{[ g.Module_Library_DB ].BasketCharge_Count_Type(g.Basket:basket_id,l.discountcode)}">
+						
+						<MvIF EXPR="{l.checkBaskDiscountCount}">
+						
+							<MvCOMMENT><MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward has been already applied."></MvCOMMENT>
+						
+						<MvELSE>
+							
+						
+							<MvASSIGN NAME = "l.formatted_total" VALUE = "{ [ g.Module_Library_DB ].Basket_Total( g.Basket:basket_id ) ROUND 2 }">
+							<MvASSIGN NAME="l.ebis_amount" VALUE="{l.datavalue:redemption_value}">
+							<MvIF EXPR="{l.datavalue:redemption_type EQ 'Percentage Discount'}">
+								<MvASSIGN NAME="l.ebis_amount" VALUE="{(l.formatted_total*l.ebis_amount)/100}">
+								<MvASSIGN NAME="l.ebis_amount" VALUE="{l.ebis_amount ROUND 2}">
+							<MvELSE>
+								<MvASSIGN NAME="l.ebis_amount" VALUE="{l.ebis_amount ROUND 2}">
+							</MvIF>
+							<MvDO file="{g.Module_Library_DB}" name="l.result" value="{Module_Load_Code(l.module:code, l.module)}" />
+							<MvASSIGN NAME = "l.basketcharge:basket_id"			VALUE = "{g.Basket:basket_id}">
+							<MvASSIGN NAME = "l.basketcharge:module_id"			VALUE = "{l.module:id}">
+							<MvASSIGN NAME = "l.basketcharge:type"				VALUE = "{l.discountcode}">
+							<MvASSIGN NAME = "l.basketcharge:descrip"			VALUE = "{l.datavalue:redemption_name}">
+							<MvASSIGN NAME = "l.basketcharge:tax_exempt"		VALUE = "{ 0 }">
+							<MvASSIGN NAME = "l.basketcharge:amount"			VALUE = "{ '-'$l.ebis_amount }">
+							<MvASSIGN NAME = "l.basketcharge:disp_amt"			VALUE = "{ '-'$l.ebis_amount }">
+							<MvIF EXPR="{l.ebis_amount GT l.formatted_total}">
+								<MvCOMMENT><MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward value cannot be greater that Basket amount."></MvCOMMENT>
+							<MvELSE>
+								<MvIF EXPR = "{ NOT [ g.Module_Library_DB ].BasketCharge_Insert( l.basketcharge ) }">
+									<MvCOMMENT><MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward could not be applied."></MvCOMMENT>
+								<MvELSE>
+									<MvCOMMENT><MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward applied successfully."></MvCOMMENT>
+								</MvIF>
+							</MvIF>
+								
+						
+						</MvIF>
+						
+					</MvIF>
+				</MvFOREACH>
+		</MvIF>
+	</MvIF>
+	
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="SystemModule_UIException" PARAMETERS="module var, exception" STANDARDOUTPUTLEVEL="">
+	<MvCOMMENT>
+		API: 5.0
+		Miva Merchant calls this function during a UI Exception. Return Value:  1 on success 0 on error -1
+		exits SystemModule_UIException without performing default behavior
+	</MvCOMMENT>
+
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Render_Start" PARAMETERS="module var,item,all_settings var,settings var,param" STANDARDOUTPUTLEVEL="compresswhitespace,html,text">
+		<MvASSIGN NAME = "l.zinrelo_fields"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.zfields ) }">
+		<MvIF EXPR="{l.zfields[1]:enablem}">	
+	
+			<MvIF EXPR = "{ l.item EQ 'zinrelo_transaction'}">
+				<MvASSIGN NAME="l.OrderID" VALUE="{miva_variable_value(l.param)}">
+				<MvIF EXPR = "{l.OrderID AND Zinrelo_Order_Create(l.OrderID) }">
+					<MvCOMMENT><MvEVAL EXPR="{'Exported Order #'$l.OrderID}"></MvCOMMENT>
+				</MvIF>
+			</MvIF>
+			
+			
+
+			<MvIF EXPR = "{ l.item EQ 'zinrelo' AND ISNULL l.param}">
+				
+				
+				<MvIF EXPR = "{NOT ISNULL g.Product_Code}">
+					<MvASSIGN NAME="l.loadProductData" VALUE="{[ g.Module_Library_DB ].Runtime_Product_Load_Code(g.Product_Code,l.productdata)}">
+					<MvASSIGN NAME="l.miva_product_category" VALUE="{Zinrelo_CategoryList_Load_Product(l.productdata:id)}">
+					<script type='text/javascript'>
+					 var miva_product_price =  "<MvEVAL EXPR="{l.productdata:price}">";
+					 var miva_product_id = "<MvEVAL EXPR="{l.productdata:code}">";
+					 var miva_product_category = "<MvEVAL EXPR="{ JSON_CustomExp_Encode(l.miva_product_category) }">";
+					</script>
+				<MvELSE>
+					<script type='text/javascript'>
+					 var miva_product_price =  "";
+					 var miva_product_id = "";
+					 var miva_product_category = "";
+					</script>
+				</MvIF>
+				
+				
+				<MvIF EXPR="{g.Basket:Cust_ID}">
+					<MvASSIGN NAME="l.zinrelo:user_id"  value="{g.Basket:Cust_ID}">
+					<MvIF EXPR="{g.Customer:pw_email}">
+						<MvASSIGN NAME="l.zinrelo:email"  value="{g.Customer:pw_email}">
+					<MvELSE>
+						<MvASSIGN NAME="l.zinrelo:email"  value="{g.Customer:bill_email}">
+					</MvIF>	
+					<MvIF EXPR="{g.Customer:bill_fname}">
+						<MvASSIGN NAME="l.zinrelo:name"  value="{g.Customer:bill_fname  $ ' ' $ g.Customer:bill_lname}">
+					<MvELSE>
+						<MvASSIGN NAME="l.zinrelo:name"  value="{g.Customer:ship_fname  $ ' ' $ g.Customer:ship_lname}">
+					</MvIF>	
+				</MvIF>
+				<MvASSIGN Name="l.timeStamp" VALUE="{s.time_t}">
+				<MvASSIGN Name="l.sha256Hash" VALUE="{l.zinrelo:user_id$l.zinrelo:email$l.zfields[1]:apiuser$l.zfields[1]:apipass$l.timeStamp}">
+				<MvASSIGN Name="l.sha256Encrypted" VALUE="{crypto_sha256(l.sha256Hash,'hex',l.encryptedData)}">
+				<script type="text/javascript"> 
+				window._zrl = window._zrl || []; 
+				var init_data = { 
+					"partner_id" : "<MvEVAL EXPR="{l.zfields[1]:apiuser}">", 
+					"email" : "<MvEVAL EXPR="{l.zinrelo:email}">",
+					"name" : "<MvEVAL EXPR="{l.zinrelo:name}">", 
+					"user_id": "<MvEVAL EXPR="{l.zinrelo:user_id}">",
+					"ts": "<MvEVAL EXPR="{l.timeStamp}">",
+					"access_token": "<MvEVAL EXPR="{l.encryptedData}">"
+				 }; 
+				_zrl.push( [ 'init' , init_data ] );
+				</script> 
+				<script src="//cdn.zinrelo.com/js/all.js" type="text/javascript"></script> 
+			</MvIF>
+			
+			<MvCOMMENT> Rewards Progam </MvCOMMENT>
+			<MvIF EXPR = "{ l.item EQ 'zinrelo' AND l.param EQ 'rewardsform'}">
+				<MvASSIGN NAME="l.zinBaskDiscount" VALUE="0">
+				<MvFOREACH ITERATOR = "l.basketcharge" ARRAY = "l.basketcharges" COUNT = "{ [ g.Module_Library_DB ].BasketChargeList_Load_Basket(g.Basket:basket_id,l.basketcharges) }">
+					<MvIF EXPR="{'zinrelo_' CIN l.basketcharge:type}">
+						<MvASSIGN NAME="l.zinBaskDiscount" VALUE="1">
+					</MvIF>
+				</MvFOREACH>
+				
+				<MvIF EXPR="{l.zinBaskDiscount GT 0}">
+					<MvEVAL EXPR="{'<form method="post" id="zinrewform" action="'$g.secure_sessionurl$'">'}">
+						<input type="hidden" name="Action" id="zraction" value="ZRRPDREM">
+						<input type="hidden" name="zrdtype" id="zrdtype" value="">
+						<MvEVAL EXPR="{'<input type="hidden" name="Screen" value="'$g.screen$'">'}">
+						 
+					</form>
+				<MvELSE>
+					<MvASSIGN NAME = "l.basket_total" VALUE = "{ [ g.Module_Library_DB ].Basket_Total( g.Basket:basket_id ) ROUND 2 }">
+					<style>
+						#zinrewards_flexible[readonly]{background:#f8f8f8}
+						#zinrelo_reward_error{color:red;margin:5px 0px}
+					</style>
+					<script type="text/javascript">
+						<MvIF EXPR="{g.Action EQ 'ZRRPDREM'}">
+							setTimeout(function(){document.getElementById('zinrelo_removed_message').style.display='none'},2000);
+						</MvIF>	
+						var zinreloredpointvalueglobal = 0;
+						function checkRewardRedeem(rsel)
+						{
+							/* Flexible Rewards Start */
+							 document.getElementById('zinrelo_reward_error').style.display = 'none';
+							 var checkFR = document.getElementById('zinrewards').options[document.getElementById('zinrewards').selectedIndex].getAttribute('data-flexible');
+							 if(checkFR == 1)
+							 {
+							 	document.getElementById('zinrewards_flexible').value='1';
+							 	document.getElementById('zinrewards_flexible').removeAttribute('readonly');
+							 	document.getElementById('zinrewards_flexible').style.display='block';
+							 }
+							 else if(checkFR == 2)
+							 {
+
+								var zinrelo_baskettotal   = parseFloat(<MvEVAL EXPR="{l.basket_total}">);
+								var zinrelo_redpointvalue =	parseFloat(document.getElementById('zinrewards_flexible').getAttribute('data-rvalue'));
+								var zinrelo_totalpoints   =	parseFloat(document.getElementById('zinrewards_flexible').getAttribute('data-points'));
+								var zinrelo_predemable	  = zinrelo_totalpoints*zinrelo_redpointvalue;
+								var zinrelo_defaultValue  = zinrelo_totalpoints;
+								if(zinrelo_predemable !='NaN')
+								{
+									if(zinrelo_baskettotal < zinrelo_predemable)
+										{
+											zinrelo_defaultValue  = Math.ceil(zinrelo_baskettotal/zinrelo_redpointvalue);
+										}
+								}
+							 	document.getElementById('zinrewards_flexible').value = zinrelo_defaultValue;
+							 	document.getElementById('zinrewards_flexible').setAttribute('readonly','true');
+							 	document.getElementById('zinrewards_flexible').style.display = 'block';
+							 }
+							 else
+							 {
+							 	document.getElementById('zinrewards_flexible').value='';
+							 	document.getElementById('zinrewards_flexible').style.display='none';
+							 }
+							/* Flexible Rewards End  */
+
+							if(rsel)
+								document.getElementById('zinredmBtn').disabled = false;
+							else
+								document.getElementById('zinredmBtn').disabled = true;	
+							
+						}
+						show_rewards = function()
+						{ 
+							var showrewardsselbox=0;
+							var zinrewardcont= document.getElementById('zinrelo_container');
+							var rewardselbox=document.getElementById('zinrewards');
+							var rewardoption   = '<option value="0" data-discount="0" data-flexible="0">SELECT POINTS TO REDEEM</option>';
+							for(i=0;i< zrl_mi.user_rewards.length;i++)
+							{   
+								reward = zrl_mi.user_rewards[i];   
+								console.log(reward);
+								if (reward.allowed_redeem_points == 0) 
+								{    
+									/*console.log('no rewards available');*/
+								}    
+								else 
+								{ 
+									/*console.log(reward)
+									if(reward.redemption_type=="Percentage Discount")
+										var discountval=reward.redemption_value+'%';
+									else
+									*/
+									var discountval='';/*'$'+reward.redemption_value;*/
+
+									var flexible = 0;
+									if(reward.metadata.Flexible =='true')
+									{
+										flexible = 1;
+									}
+									if(flexible)
+									{
+										var zinrelo_redpointvalue =	(parseFloat(reward.redemption_value)/parseFloat(reward.allowed_redeem_points));
+										zinreloredpointvalueglobal = zinrelo_redpointvalue;
+										document.getElementById('zinrewards_flexible').setAttribute('data-rvalue',zinrelo_redpointvalue)
+										rewardoption  = rewardoption + '<option value="'+reward.redemption_id+'" data-flexible="'+flexible+'" data-type="'+reward.redemption_type+'">'+reward.redemption_name+'</option>';
+										rewardoption  = rewardoption + '<option value="'+reward.redemption_id+'" data-flexible="2" data-type="'+reward.redemption_type+'">Utilize All Available Points</option>';
+									}
+									else
+									{
+										rewardoption  = rewardoption + '<option value="'+reward.redemption_id+'" data-flexible="'+flexible+'" data-type="'+reward.redemption_type+'">'+discountval+' '+reward.redemption_name+' - '+reward.allowed_redeem_points+' points</option>';
+									}
+									showrewardsselbox++;
+								}  
+							}
+							if(showrewardsselbox > 0)
+							{
+								rewardselbox.innerHTML=rewardoption;
+								zinrewardcont.style.display='block';
+							}	
+							else
+							{
+								zinrewardcont.style.display='none';
+							}
+						}; 
+						handle_error = function()
+						{
+							/*console.log('error');*/
+						};
+						get_zrl_rewards = function()
+						{
+							if(typeof(zrl_mi) !== 'undefined' && zrl_mi.init_success !== 'undefined' && zrl_mi.init_success)
+							{  
+								get_user_rewards();
+								var userRewards=zrl_mi.get_loyalty_user_info();
+								/*console.log(userRewards);*/
+							}
+							else
+							{ 
+								setTimeout(get_zrl_rewards, 500);
+							}
+						};
+						get_user_rewards = function() 
+						{
+							/*console.log(zrl_mi.user_email);*/
+							if (!zrl_mi.user_email || zrl_mi.email === '')
+							{ 
+								return false;
+							}
+							var data;
+							data = {merchant_id: zrl_mi.partner_id, user_email: zrl_mi.user_email};
+							return ss_mi.ajax({url: "" + zrl_mi.server + "/user/rewards",data: data,success: show_rewards,onerror: handle_error});
+						};
+						get_zrl_rewards();
+						
+						window.get_user_info = function(){
+							if(typeof(zrl_mi) =='undefined'){
+								setTimeout(window.get_user_info, 100)
+							}
+							else{
+								zrl_mi.get_loyalty_user_info();
+							}
+						}
+						
+						window.zrlmi_loyalty_user_info_success_handler = function(data)
+						{
+							var zinrelototalavailableamount = data.available_points * zinreloredpointvalueglobal;
+							var zinrelototalavailableamountHtml = '';
+							zinrelototalavailableamount =	Number(zinrelototalavailableamount).toFixed(2);
+							if(zinrelototalavailableamount > 0)
+							{
+								zinrelototalavailableamountHtml = ' ($'+zinrelototalavailableamount+' discount) ';
+							}
+							document.getElementById('zinrelo_availpoints').innerHTML="You have "+data.available_points+" Loyalty Points "+zinrelototalavailableamountHtml+"available. Select from the options below to apply to this order.";
+							if(typeof(document.getElementById('zinrewards_flexible')) != undefined )
+							{
+								document.getElementById('zinrewards_flexible').setAttribute('data-points',data.available_points);
+							}
+						}
+						
+						window.get_user_info();
+						
+						
+						function checkMaxPoints($this,$points)
+						{
+							var rewardError = document.getElementById('zinrelo_reward_error');
+							var $decimalCheck = Number.isInteger(Number($points));
+							var $valueCheck =  Number.isInteger(Number($this.value));
+							rewardError.style.display = 'none';
+							rewardError.innerHTML = ' ';
+							if($decimalCheck == true && $valueCheck != true)
+							{
+								rewardError.style.display = 'block';
+								rewardError.innerHTML = 'Decimal Points are not allowed';
+								document.getElementById('zinrewards_flexible').value=parseInt($this.value);
+							}
+							else if(parseInt($this.value) > parseInt($points))
+							{
+								rewardError.style.display = 'block';
+								rewardError.innerHTML = 'Max '+$points+' points can be redeemed';
+								document.getElementById('zinrewards_flexible').value=parseInt($points);
+							}
+							else if(parseInt($this.value) < 1 || $this.value =='')
+							{
+								rewardError.style.display = 'block';
+								rewardError.innerHTML = 'Points should be more than 0';
+								document.getElementById('zinrewards_flexible').value=1;
+							}
+						}
+						function submitZinreloForm()
+						{
+							var e = document.getElementById("zinrewards");
+							var zinreward = e.options[e.selectedIndex].value;
+							document.getElementById("zinrewards_val").value = zinreward;
+							document.getElementById("zinrewards_flexible_val").value = document.getElementById("zinrewards_flexible").value;
+							document.getElementById("zinrewform").submit();
+						}
+
+					</script>
+					<MvEVAL EXPR="{'<form method="post" id="zinrewform" action="'$g.secure_sessionurl$'">'}">
+						<input type="hidden" name="Action" id="zraction" value="ZRRPD">
+						<input type="hidden" name="zrdtype" id="zrdtype" value="">
+						<MvEVAL EXPR="{'<input type="hidden" name="Screen" value="'$g.screen$'">'}">
+						<input type="hidden" name="zinrewards" id="zinrewards_val" value="">
+						<input type="hidden" name="zinrewards_flexible" id="zinrewards_flexible_val" value="">
+					</form>
+				</MvIF>
+
+			</MvIF>	
+			<MvIF EXPR = "{ l.item EQ 'zinrelo' AND l.param EQ 'rewards'}">
+				<MvASSIGN NAME="l.zinBaskDiscount" VALUE="0">
+				<MvFOREACH ITERATOR = "l.basketcharge" ARRAY = "l.basketcharges" COUNT = "{ [ g.Module_Library_DB ].BasketChargeList_Load_Basket(g.Basket:basket_id,l.basketcharges) }">
+					<MvIF EXPR="{'zinrelo_' CIN l.basketcharge:type}">
+						<MvASSIGN NAME="l.zinBaskDiscount" VALUE="1">
+					</MvIF>
+				</MvFOREACH>
+				
+				<MvIF EXPR="{l.zinBaskDiscount GT 0}">	
+					 <div id="zinreward_applied">Reward has been applied to cart. <a href="javascript:;" onclick="document.getElementById('zinrewform').submit()">Cancel Reward</a></div>
+				<MvELSE>
+
+					<div id="zinrelo_container" style="display:none">
+						<div style="margin-bottom: 10px;padding-left: 0px;text-transform: none;" class="c-form-list__item c-form-list__item--full o-layout__item c-heading-echo u-text-uppercase t-ocst-subheader u-3-font" id="zinrelo_availpoints"></div>	
+						<select id="zinrewards" onChange="checkRewardRedeem(this.value)" style="min-height:30px;min-width:200px;margin-right:10px;"></select><input type="number" id="zinrewards_flexible" value="" onchange="checkMaxPoints(this,this.getAttribute('data-points'))"  value="1" placeholder="Enter Points" style="min-height:30px;margin:10px 0px;min-width:218px;display:none"><div id="zinrelo_reward_error" style="display:none"></div><button type="button" onclick="document.getElementById('zinredmBtn').disabled = true;submitZinreloForm();" id="zinredmBtn" style="min-height:30px" disabled>Redeem</button>
+					</div>
+					
+					<MvIF EXPR="{g.zin_redeem_status}">
+						<MvEVAL EXPR="{g.zin_redeem_status}">
+					</MvIF>
+				</MvIF>
+			</MvIF>
+			
+			<MvCOMMENT>
+			<MvIF EXPR = "{ l.item EQ 'zinrelo' AND l.param AND l.param NE 'rewards'}">
+				<MvASSIGN NAME="l.prodid" VALUE="{miva_variable_value(l.param)}">
+				<MvASSIGN NAME="l.checkBaskDiscount" VALUE="{[ g.Module_Library_DB ].Runtime_Product_Load_ID(l.prodid,l.productdata)}">
+				<MvASSIGN NAME="l.miva_product_category" VALUE="{Zinrelo_CategoryList_Load_Product(l.productdata:id)}">
+				<script type='text/javascript'>
+				 var miva_product_price =  '<MvEVAL EXPR="{l.productdata:price}">';
+				 var miva_product_id = "<MvEVAL EXPR="{l.productdata:code}">";
+				 var miva_product_category = "<MvEVAL EXPR="{ JSON_CustomExp_Encode(l.miva_product_category) }">";
+				</script>
+			</MvIF>
+			</MvCOMMENT>
+			
+		</MvIF>
+  <MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+<MvFUNCTION NAME="ComponentModule_Tabs" PARAMETERS="module var,item,settings var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Validate" PARAMETERS="module var,item,field_prefix,fields  var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Update" PARAMETERS="module var,item,field_prefix,fields var,settings var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Content" PARAMETERS="module var,item,tab,load_fields,field_prefix,fields var,settings var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Defaults" PARAMETERS="module var,settings var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Page_Assign" PARAMETERS="module var,page var,item,settings var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Page_Unassign" PARAMETERS="module var,page var,item,settings var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Initialize" PARAMETERS="module var,item,all_settings var,settings var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Render_End" PARAMETERS="module var,item,all_settings var,settings var,param" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="ComponentModule_Prerender" PARAMETERS="module var,item,all_settings var,settings var,param" STANDARDOUTPUTLEVEL="">
+        <MvFUNCTIONRETURN VALUE="">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="FulfillmentModule_ProcessOrder" PARAMETERS="module var, order var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="Module_Notify_Order_BatchChange" PARAMETERS="module var, order_count, original_orders var, orders var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Notify_Order_Delete" PARAMETERS = "module var, order var" STANDARDOUTPUTLEVEL = "">
+	<MvFUNCTIONRETURN>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Notify_Order_Insert" PARAMETERS = "module var, order var" STANDARDOUTPUTLEVEL = "">
+	<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+	<MvIF EXPR="{l.fields[1]:enablem}">
+		<MvIF expr="{l.order:source EQ 'Subscription' OR l.order:source EQ 'subscription' }">
+			<MvIF EXPR = "{l.order:id AND Zinrelo_Order_Create(l.order:id) }">
+				<MvExport file="zinrelo_debug.dat" fields="l.order:id$'='$l.order:status$'='$l.fields[1]:sub_id" delimiter="|">
+				<MvCOMMENT><MvEVAL EXPR="{'Exported Order #'$l.OrderID}"></MvCOMMENT>
+			</MvIF>
+		</MvIF>
+		<MvIF expr="{l.order:source EQ 'Manual' OR l.order:source EQ 'manual' }">
+			<MvIF EXPR = "{l.order:id AND Zinrelo_Order_Create(l.order:id) }">
+				<MvExport file="zinrelo_debug.dat" fields="l.order:id$'='$l.order:status$'='$l.fields[1]:sub_id" delimiter="|">
+				<MvCOMMENT><MvEVAL EXPR="{'Exported Order #'$l.OrderID}"></MvCOMMENT>
+			</MvIF>
+		</MvIF>
+	</MvIF>
+  <MvFUNCTIONRETURN>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Module_Notify_Order_StatusChange" PARAMETERS = "module var, original_status, order var" STANDARDOUTPUTLEVEL = "">
+	<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+	<MvIF EXPR="{l.fields[1]:enablem}">
+		<MvIF expr="{l.order:status EQ 100 OR l.order:status EQ 200}">
+			<MvIF expr="{l.order:source EQ 'User' OR l.order:source EQ 'user'}">
+			    <MvIF EXPR = "{l.order:cust_id NE '0' AND Zinrelo_User_Create(l.order:cust_id)}">
+				<MvCOMMENT><MvEVAL EXPR="{'Exported Order and created user #'$l.OrderID}"></MvCOMMENT>
+		            </MvIF>			
+			</MvIF>
+		</MvIF>
+
+		<MvIF expr="{l.order:status EQ 200 AND l.fields[1]:sub_id EQ 1}">
+			<MvIF expr="{l.order:source EQ 'Subscription' OR l.order:source EQ 'subscription'}">
+				<MvIF EXPR = "{l.order:id AND Zinrelo_Order_Create(l.order:id) }">
+					<MvExport file="zinrelo_debug.dat" fields="l.order:id$'='$l.order:status$'='$l.fields[1]:sub_id" delimiter="|">
+					<MvCOMMENT><MvEVAL EXPR="{'Exported Order #'$l.OrderID}"></MvCOMMENT>
+			    	</MvIF>
+			</MvIF>
+
+			<MvIF EXPR = "{l.order:id AND Zinrelo_Order_Approve(l.order:id) }">
+				<MvExport file="zinrelo_debug.dat" fields="l.order:id$'='$l.order:status$'='$l.fields[1]:sub_id" delimiter="|">
+				<MvCOMMENT><MvEVAL EXPR="{'Exported Order #'$l.OrderID}"></MvCOMMENT>
+			</MvIF>
+		</MvIF>
+
+		<MvIF expr="{l.order:status EQ 100 OR l.order:status EQ 0}">
+			<MvIF EXPR = "{l.order:id AND Zinrelo_Order_Create(l.order:id) }">
+				<MvExport file="zinrelo_debug.dat" fields="l.order:id$'='$l.order:status$'='$l.fields[1]:sub_id" delimiter="|">
+				<MvCOMMENT><MvEVAL EXPR="{'Exported Order #'$l.OrderID}"></MvCOMMENT>
+			</MvIF>
+		</MvIF>
+	</MvIF>
+  <MvFUNCTIONRETURN>
+</MvFUNCTION>
+
+<MvCOMMENT> not_orderitem </MvCOMMENT>
+
+
+<MvFUNCTION NAME = "Module_Notify_OrderItem_Insert" PARAMETERS = "module var, orderitem var" STANDARDOUTPUTLEVEL = "">
+	<MvDO file="{g.Module_Library_DB}" name="l.success" value="{Order_Load_ID(l.orderitem:order_id, l.order)}" />
+
+	<MvIF EXPR = "{l.order:id AND Zinrelo_Order_Delete(l.order:id,'')}">
+		<MvIF EXPR="{Zinrelo_Order_Create_Admin(l.order:id,l.orderitem)}">
+			<MvASSIGN NAME = "l.note"			VALUE = "">
+			<MvASSIGN NAME = "l.note:order_id"	VALUE = "{ l.order:id }">
+			<MvASSIGN NAME = "l.note:cust_id"	VALUE = "{ l.order:cust_id }">
+			<MvASSIGN NAME = "l.note:notetext"	VALUE = "{ 'Zinrelo Points Added'}">
+			<MvASSIGN NAME = "l.null"			VALUE = "{ [ g.Module_Library_DB ].Note_Insert( l.note ) }">
+		</MvIF>
+	</MvIF>
+
+</MvFUNCTION>
+<MvFUNCTION NAME = "Module_Notify_OrderItem_Update" PARAMETERS = "module var, original_orderitem, orderitem" STANDARDOUTPUTLEVEL = "">
+	<MvFUNCTIONRETURN>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="Module_Notify_OrderItem_Delete" PARAMETERS="module var, count, original_orderitems var, orderitems var" STANDARDOUTPUTLEVEL="">
+		<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+		<MvFOREACH ITERATOR = "l.item" ARRAY = "l.orderitems" COUNT = "{ l.orderitem_count }" INDEX = "l.orderitem_pos">
+			<MvIF EXPR = "{l.fields[1]:enablem}">
+				<MvASSIGN Name="l.result" VALUE="{Zinrelo_Order_Delete(l.item:order_id,l.item)}">
+			</MvIF>
+		</MvFOREACH>	
+		
+	<MvFUNCTIONRETURN>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="Module_Notify_OrderItem_StatusChange" PARAMETERS="module var, orderitem_count, original_orderitems var, orderitems var" STANDARDOUTPUTLEVEL="">
+	
+	<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+	<MvFOREACH ITERATOR = "l.item" ARRAY = "l.orderitems" COUNT = "{ l.orderitem_count }" INDEX = "l.orderitem_pos">
+		<MvIF EXPR = "{l.fields[1]:enablem AND l.item:status NE l.original_item:status  AND Zinrelo_API_Log_Count(l.item:order_id) GT 0}">
+			<MvIF EXPR = "{l.item:status EQ 300 OR l.item:status EQ 500 OR l.item:status EQ 600 }">					
+					<MvASSIGN Name="l.result" VALUE="{Zinrelo_Order_Delete(l.item:order_id,'')}">
+					<MvASSIGN Name="l.result" VALUE="{Zinrelo_Order_Create_Admin(l.order:id,l.orderitem)}">
+			</MvIF>
+		</MvIF>
+	</MvFOREACH>	
+		
+	<MvFUNCTIONRETURN>
+</MvFUNCTION>
+
+
+<MvCOMMENT> vis_order </MvCOMMENT>
+
+<MvFUNCTION NAME="Module_Order_Content" PARAMETERS="module var, tab, load_fields" STANDARDOUTPUTLEVEL="text,html,compresswhitespace">
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="Module_Order_Delete" PARAMETERS="module var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="Module_Order_Delete_Order" PARAMETERS="module var, order var" STANDARDOUTPUTLEVEL="">
+		<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+		<MvIF EXPR="{l.fields[1]:enablem}">
+			<MvASSIGN Name="l.result" VALUE="{Zinrelo_Order_Delete(l.order:id,'')}">
+		</MvIF>
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="Module_Order_Head" PARAMETERS="module var, tab, order var" STANDARDOUTPUTLEVEL="text,html">
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="Module_Order_Tabs" PARAMETERS="module var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE="">
+</MvFUNCTION>
+
+<MvFUNCTION NAME="Module_Order_Update" PARAMETERS="module var" STANDARDOUTPUTLEVEL="" ERROROUTPUTLEVEL = "">
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME="Module_Order_Validate" PARAMETERS="module var" STANDARDOUTPUTLEVEL="">
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+
+<MvFUNCTION NAME = "Zinrelo_getOrderStatusNameById" PARAMETERS = "status_id" STANDARDOUTPUTLEVEL = "">
+	<MvASSIGN NAME="l.shipped_shipments" value="{'Pending'}">
+	<mvif expr="{status_id EQ '0'}">
+		<MvASSIGN NAME="l.shipped_shipments" value="{'Pending'}">
+	</mvif>
+	<mvif expr="{status_id EQ '100'}">
+		<MvASSIGN NAME="l.shipped_shipments" value="{'Processing'}">
+	</mvif>
+	<mvif expr="{status_id EQ '200'}">
+		<MvASSIGN NAME="l.shipped_shipments" value="{'Shipped'}">
+	</mvif>
+	<mvif expr="{status_id EQ '201'}">
+		<MvASSIGN NAME="l.shipped_shipments" value="{'Partially'}">
+	</mvif>
+	<mvif expr="{status_id EQ '300'}">
+		<MvASSIGN NAME="l.shipped_shipments" value="{'Cancelled'}">
+	</mvif>
+	<mvif expr="{status_id EQ '400'}">
+		<MvASSIGN NAME="l.shipped_shipments" value="{'Backordered'}">
+	</mvif>
+	<mvif expr="{status_id EQ '500'}">
+		<MvASSIGN NAME="l.shipped_shipments" value="{'RMAIssued'}">
+	</mvif>
+	<mvif expr="{status_id EQ '600'}">
+		<MvASSIGN NAME="l.shipped_shipments" value="{'Returned'}">
+	</mvif>
+	<MvFUNCTIONRETURN VALUE = "{l.shipped_shipments}">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_Rewards_Redeem" PARAMETERS="orderID" STANDARDOUTPUTLEVEL="" ERROROUTPUTLEVEL="">
+    <MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+    <MvIF EXPR="{l.fields[1]:enablem}">		
+	<MvDO file="{g.Module_Library_DB}" name="l.success" value="{Order_Load_ID(l.orderID, l.order)}" />
+	<MvIF EXPR="{l.success}">
+	    <MvIF EXPR="{g.Customer:pw_email}">
+		<MvASSIGN NAME="l.user_email"  value="{g.Customer:pw_email}">
+	    <MvELSE>
+		<MvASSIGN NAME = "l.user_email"	VALUE = "{l.order:bill_email}">	
+	    </MvIF>
+	    <MvASSIGN NAME = "l.points"	VALUE = "0">	
+	    <MvASSIGN NAME = "l.order_id"					VALUE = "{l.orderID}">
+	    <MvASSIGN NAME="l.checkOrderDiscount" VALUE="{[ g.Module_Library_DB ].OrderChargeList_Load_Order(l.order_id,l.zinordercharges)}">
+	    <MvFOREACH ITERATOR = "l.zinordercharge" ARRAY = "l.zinordercharges" INDEX = "l.pos">
+		<MvIF EXPR="{'zinrelo_' CIN l.zinordercharge:type}">
+			<MvASSIGN NAME="l.redemption_id" value="{glosub(l.zinordercharge:type,'zinrelo_','')}">
+
+			<MvASSIGN NAME = "g.headers" VALUE = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+			<MvASSIGN NAME = "g.headers" VALUE = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+			
+
+			<MvIF EXPR="{'Points)' CIN l.zinordercharge:descrip}">
+				<MvASSIGN NAME="l.flexible_reward" value="{gettoken(l.zinordercharge:descrip,'(',2)}">
+				<MvASSIGN NAME="l.flexible_reward" value="{glosub(l.flexible_reward,'Points)','')}">
+				<MvASSIGN NAME="l.points" 		   value="{trim(l.flexible_reward)}">
+			</MvIF>
+
+			<MvIF EXPR="{l.points GT 0}">
+
+				<MvASSIGN NAME = "l.headertype" VALUE = "Content-Type: application/json">
+				<MIVA STANDARDOUTPUTLEVEL="text,html,compresswhitespace">
+					<MvCAPTURE VARIABLE = "l.jsonData">
+						{
+					        "redemption_id": "<MvEVAL EXPR="{l.redemption_id}">",
+					        "user_email" : "<MvEVAL EXPR="{l.user_email}">",
+					        "points": <MvEVAL EXPR="{l.points}">
+					     }
+					</MvCAPTURE>
+			    <MIVA STANDARDOUTPUTLEVEL="">
+				<Mvcall method="RAW" 
+						HEADERS= "{ g.headers $ l.headertype $ asciichar( 13 ) $ asciichar( 10 ) }"  
+						action="https://api.zinrelo.com/v1/loyalty/redeem" 
+						fields="l.jsonData">
+						<MvASSIGN Name="l.zin_redeem_result" VALUE= "{s.callvalue}" />
+				</Mvcall>
+
+			<MvELSE>
+				
+				<Mvcall method="POST" 
+						HEADERS= "{ g.headers }"  
+						action="https://api.zinrelo.com/v1/loyalty/redeem" 
+						fields="l.redemption_id,l.user_email">
+						<MvASSIGN Name="l.zin_redeem_result" VALUE= "{s.callvalue}" />
+				</Mvcall>
+			
+			</MvIF>
+			
+			<MvASSIGN NAME="g.zinreloUsedCoupon" value="0">
+
+			<MvASSIGN NAME="l.json" value="{miva_json_decode(l.zin_redeem_result, l.jsonval)}">
+			<MvIF EXPR="{l.jsonval:data:coupon_code}">
+				<MvASSIGN NAME="g.zinreloUsedCoupon" value="{l.jsonval:data:coupon_code}">
+			</MvIF>
+
+			<MvExport file="zinrelo_debug.dat" fields="l.order_id$'='$l.jsonval" delimiter="|">
+		</MvIF>
+	    </MvFOREACH>
+	</MvIF>
+    </MvIF>
+    <MvFUNCTIONRETURN VALUE = "{g.zinreloUsedCoupon}">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_Order_Approve" PARAMETERS = "orderID" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+	<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+		<MvIF EXPR="{l.fields[1]:enablem}">
+			<MvASSIGN NAME = "l.order_id" VALUE = "{l.orderID}">
+			<MvASSIGN NAME = "g.headers" value = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+			<MvASSIGN NAME = "g.headers" value = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+			<Mvcall method="POST" 
+				HEADERS= "{ g.headers }"  
+				action="https://app.zinrelo.com/v1/loyalty/transactions/approve" 
+				fields="l.order_id">
+				<MvASSIGN Name="l.returnMessage" value= "{s.callvalue}" />
+			</Mvcall>
+			<MvASSIGN NAME="l.json" value="{miva_json_decode(l.returnMessage, l.jsonval)}">
+			<MvExport file="zinrelo_debug.dat" fields="l.order_id$'='l.returnMessage" delimiter="|">
+		</MvIF>	
+	<MvFUNCTIONRETURN VALUE = "1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_User_Create" PARAMETERS = "custID" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+	<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+	<MvIF EXPR="{l.fields[1]:enablem}">
+		<MvDO file="{g.Module_Feature_CUS_DB}" name="l.success" value="{Customer_Load_ID(l.custID,l.customer)}" />
+		<MvIF EXPR="{l.success}">
+			<MvASSIGN NAME="l.uid"  value="{l.custID}">
+			<MvIF EXPR="{l.customer:pw_email}">
+				<MvASSIGN NAME="l.email"  value="{l.customer:pw_email}">
+			<MvELSE>
+				<MvASSIGN NAME="l.email"  value="{l.customer:bill_email}">
+			</MvIF>	
+			<MvIF EXPR="{l.customer:bill_fname}">
+				<MvASSIGN NAME="l.first_name"  value="{l.customer:bill_fname}">
+			<MvELSE>
+				<MvASSIGN NAME="l.first_name"  value="{l.customer:ship_fname}">
+			</MvIF>
+			<MvIF EXPR="{l.customer:bill_lname}">
+				<MvASSIGN NAME="l.last_name"  value="{l.customer:bill_lname}">
+			<MvELSE>
+				<MvASSIGN NAME="l.last_name"  value="{l.customer:ship_lname}">
+			</MvIF>			
+
+			<MvASSIGN NAME = "g.headers" value = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+			<MvASSIGN NAME = "g.headers" value = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+			<Mvcall method="POST" 
+				HEADERS= "{ g.headers }"  
+				action="https://api.zinrelo.com/v1/loyalty/users" 
+				fields="l.first_name,l.last_name,l.email,l.uid">
+				<MvASSIGN Name="l.returnMessage" value= "{s.callvalue}" />
+			</Mvcall>		
+		</MvIF>
+	</MvIF>
+	<MvFUNCTIONRETURN VALUE = "1">
+</MvFUNCTION>
+
+
+<MvFUNCTION NAME = "Zinrelo_Order_Create" PARAMETERS = "orderID" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+		
+	<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+	<MvIF EXPR="{l.fields[1]:enablem}">		
+		
+		<MvDO file="{g.Module_Library_DB}" name="l.success" value="{Order_Load_ID(l.orderID, l.order)}" />
+		<MvIF EXPR="{l.success}">
+
+			<MvASSIGN Name = "l.products" 					value= "{JSON_CustomExp_Order_OnDemandColumns( l.order) }">
+			<MvASSIGN NAME = "l.order_id"					VALUE = "{l.orderID}">
+			<MvIF EXPR="{Zinrelo_API_Log_Count(l.order_id) GT 0}">
+				<MvASSIGN NAME = "g.zinreloUsedCoupon"			VALUE = "">
+			<MvELSE>
+				<MvASSIGN NAME = "g.zinreloUsedCoupon"			VALUE = "{Zinrelo_Rewards_Redeem(l.order_id)}">
+			</MvIF>
+	
+			<MvIF EXPR="{g.Customer:pw_email}">
+				<MvASSIGN NAME="l.user_email"  value="{g.Customer:pw_email}">
+			<MvELSE>
+				<MvASSIGN NAME = "l.user_email"	VALUE = "{l.order:bill_email}">	
+			</MvIF>
+			
+			<MvASSIGN NAME = "l.total"						VALUE = "{l.order:total ROUND 2}">
+			<MvASSIGN NAME = "l.currency"					VALUE = "USD">
+			<MvASSIGN NAME = "l.subtotal"					VALUE = 0.00>	
+			<MvFOREACH ITERATOR = "l.orderitem" ARRAY = "l.orderitems" COUNT = "{ [ g.Module_Library_DB ].OrderItemList_Load_Order( l.order:id, l.orderitems ) }">
+				<MvASSIGN NAME = "l.subtotal"				VALUE = "{ l.subtotal + ( l.orderitem:price * l.orderitem:quantity ) }">
+				<MvASSIGN NAME = "l.orderoption_count"			VALUE = "{ [ g.Module_Library_DB ].OrderOptionList_Load_Line( l.orderitem:line_id, l.orderoptions ) }">
+				<MvFOREACH ITERATOR = "l.orderoption" ARRAY = "l.orderoptions" COUNT = "{ l.orderoption_count }">
+					<MvASSIGN NAME = "l.subtotal"			VALUE = "{ l.subtotal + ( l.orderoption:price * l.orderitem:quantity ) }">
+				</MvFOREACH>
+			</MvFOREACH>
+
+
+			<MvASSIGN NAME = "l.ordercouponcounter"				VALUE = "1">
+			<MvASSIGN NAME = "l.coupon_code"					VALUE = "">
+
+
+			<MvIF EXPR="{g.zinreloUsedCoupon}">
+				<MvASSIGN NAME="l.coupon_code" value="{g.zinreloUsedCoupon}">
+				<MvASSIGN NAME = "l.ordercouponcounter"		VALUE = "{l.ordercouponcounter+1}">
+			</MvIF>
+
+			
+			<MvFOREACH ITERATOR = "l.ordercoupon" ARRAY = "l.ordercoupons" COUNT = "{ [ g.Module_Feature_PGR_DB ].OrderCouponList_Load_Order(l.order:id,l.ordercoupons ) }">
+				<MvIF EXPR="{l.ordercouponcounter GT 1}">	
+					<MvASSIGN NAME = "l.coupon_code" 		VALUE = "{ l.coupon_code $ ','}">
+				</MvIF>
+				<MvASSIGN NAME = "l.coupon_code" 			VALUE = "{ l.coupon_code $ l.ordercoupon:code }">
+				<MvASSIGN NAME = "l.ordercouponcounter"		VALUE = "{l.ordercouponcounter+1}">
+			</MvFOREACH>
+
+			<MvASSIGN NAME = "l.subtotal"					VALUE = "{l.subtotal ROUND 2}">
+			<MvASSIGN NAME = "g.headers" value = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+			<MvASSIGN NAME = "g.headers" value = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+			<Mvcall method="POST" 
+					HEADERS= "{ g.headers }"  
+					action="https://api.zinrelo.com/v1/loyalty/purchase" 
+					fields="l.order_id,l.user_email,l.total,l.subtotal,l.currency,l.coupon_code,l.products">
+					<MvASSIGN Name="l.returnMessage" value= "{s.callvalue}" />
+			</Mvcall>
+			<MvASSIGN NAME="l.json" value="{miva_json_decode(l.returnMessage, l.jsonval)}">
+			<MvExport file="zinrelo_debug.dat" fields="l.order_id$'='l.returnMessage" delimiter="|">
+			<MvASSIGN Name="l.field:order_id" VALUE="{l.orderID}">
+			<MvASSIGN Name="l.field:time" VALUE="{s.time_t}">
+			<MvIF EXPR="{l.jsonval:success GT 0}">
+				<MvASSIGN Name="l.field:status" VALUE="{1}">
+			<MvELSE>
+				<MvASSIGN Name="l.field:status" VALUE="{0}">
+			</MvIF>
+			<MvASSIGN Name="l.logInsert" value="{Zinrelo_Order_API_Log_Insert(l.field)}">		
+
+		</MvIF>
+	</MvIF>
+	<MvFUNCTIONRETURN VALUE = "1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_Order_Create_Admin" PARAMETERS = "orderID,orderitem_new" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+		
+	<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+	<MvIF EXPR="{l.fields[1]:enablem}">		
+		
+		<MvDO file="{g.Module_Library_DB}" name="l.success" value="{Order_Load_ID(l.orderID, l.order)}" />
+		<MvIF EXPR="{l.success}">
+
+			<MvASSIGN Name = "l.products" 					value= "{JSON_CustomExp_Order_OnDemandColumns( l.order) }">
+			<MvASSIGN NAME = "l.order_id"					VALUE = "{l.orderID}">
+			<MvIF EXPR="{Zinrelo_API_Log_Count(l.order_id) GT 0}">
+				<MvASSIGN NAME = "g.zinreloUsedCoupon"			VALUE = "">
+			<MvELSE>
+				<MvASSIGN NAME = "g.zinreloUsedCoupon"			VALUE = "{Zinrelo_Rewards_Redeem(l.order_id)}">
+			</MvIF>
+	
+			<MvIF EXPR="{g.Customer:pw_email}">
+				<MvASSIGN NAME="l.user_email"  value="{g.Customer:pw_email}">
+			<MvELSE>
+				<MvASSIGN NAME = "l.user_email"	VALUE = "{l.order:bill_email}">	
+			</MvIF>
+			
+			<MvASSIGN NAME = "l.total"						VALUE = "{l.order:total ROUND 2}">
+			<MvASSIGN NAME = "l.currency"					VALUE = "USD">
+			<MvASSIGN NAME = "l.subtotal"					VALUE = 0.00>
+			<MvASSIGN NAME = "l.itemsCount"					VALUE = 1>	
+			<MvFOREACH ITERATOR = "l.orderitem" ARRAY = "l.orderitems" COUNT = "{ [ g.Module_Library_DB ].OrderItemList_Load_Order( l.order:id, l.orderitems ) }">
+				<MvIF EXPR="{l.orderitem:status LE 200}">
+					<MvASSIGN NAME = "l.subtotal"				VALUE = "{ l.subtotal + ( l.orderitem:price * l.orderitem:quantity ) }">
+					<MvASSIGN NAME = "l.orderoption_count"			VALUE = "{ [ g.Module_Library_DB ].OrderOptionList_Load_Line( l.orderitem:line_id, l.orderoptions ) }">
+					<MvFOREACH ITERATOR = "l.orderoption" ARRAY = "l.orderoptions" COUNT = "{ l.orderoption_count }">
+						<MvASSIGN NAME = "l.subtotal"			VALUE = "{ l.subtotal + ( l.orderoption:price * l.orderitem:quantity ) }">
+					</MvFOREACH>
+					<MvASSIGN NAME = "l.itemsCount"					VALUE = "{l.itemsCount+1}">
+				</MvIF>
+			</MvFOREACH>
+
+			<MvIF EXPR="{l.itemsCount LT 1}">
+				<MvFUNCTIONRETURN>
+			</MvIF>	
+
+			<MvCOMMENT>
+				<MvASSIGN NAME = "l.newSubtotal"				VALUE = "0">
+				<MvIF EXPR="{l.orderitem_new}">
+					<MvASSIGN NAME = "l.newSubtotal"			VALUE = "{l.orderitem_new:price * l.orderitem_new:quantity}">
+					<MvASSIGN NAME = "l.subtotal"				VALUE = "{ l.subtotal + ( l.orderitem_new:price * l.orderitem_new:quantity ) }">
+
+					<MvASSIGN NAME = "l.total"					VALUE = "{(l.order:total+l.newSubtotal) ROUND 2}">
+				</MvIF>
+			</MvCOMMENT>
+
+			<MvASSIGN NAME = "l.ordercouponcounter"			VALUE = "1">
+			<MvASSIGN NAME = "l.coupon_code"				VALUE = "">
+
+
+			<MvIF EXPR="{g.zinreloUsedCoupon}">
+				<MvASSIGN NAME="l.coupon_code" value="{g.zinreloUsedCoupon}">
+				<MvASSIGN NAME = "l.ordercouponcounter"		VALUE = "{l.ordercouponcounter+1}">
+			</MvIF>
+
+			
+			<MvFOREACH ITERATOR = "l.ordercoupon" ARRAY = "l.ordercoupons" COUNT = "{ [ g.Module_Feature_PGR_DB ].OrderCouponList_Load_Order(l.order:id,l.ordercoupons ) }">
+				<MvIF EXPR="{l.ordercouponcounter GT 1}">	
+					<MvASSIGN NAME = "l.coupon_code" 		VALUE = "{ l.coupon_code $ ','}">
+				</MvIF>
+				<MvASSIGN NAME = "l.coupon_code" 			VALUE = "{ l.coupon_code $ l.ordercoupon:code }">
+				<MvASSIGN NAME = "l.ordercouponcounter"		VALUE = "{l.ordercouponcounter+1}">
+			</MvFOREACH>
+
+			<MvASSIGN NAME = "l.zinrelo_soid"    VALUE = "{ Zinrelo_Order_CustomField_Order_Id('zinrelo_soid',l.order_id) }">
+			<MvIF EXPR="{l.zinrelo_soid}">
+				<MvASSIGN NAME = "l.order_id_key"    VALUE = "{gettoken(l.zinrelo_soid,'-',2)}">
+				<MvASSIGN NAME = "l.order_id_key"    VALUE = "{l.order_id_key+1}">
+				<MvASSIGN NAME = "l.order_id_new"    VALUE = "{l.order_id$'-'$l.order_id_key}">
+			<MvELSE>
+				<MvASSIGN NAME = "l.order_id_new"    VALUE = "{l.order_id$'-1'}">	
+			</MvIF>
+			<MvASSIGN NAME = "l.order_id"    VALUE = "{l.order_id_new}">	
+
+			<MvASSIGN NAME = "l.subtotal"					VALUE = "{l.subtotal ROUND 2}">
+			<MvASSIGN NAME = "g.headers" value = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+			<MvASSIGN NAME = "g.headers" value = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+			<Mvcall method="POST" 
+					HEADERS= "{ g.headers }"  
+					action="https://api.zinrelo.com/v1/loyalty/purchase" 
+					fields="l.order_id,l.user_email,l.total,l.subtotal,l.currency,l.coupon_code,l.products">
+					<MvASSIGN Name="l.returnMessage" value= "{s.callvalue}" />
+			</Mvcall>
+			<MvASSIGN NAME="l.json" value="{miva_json_decode(l.returnMessage, l.jsonval)}">
+			<MvExport file="zinrelo_debug.dat" fields="l.order_id$'='l.returnMessage" delimiter="|">
+			<MvASSIGN Name="l.field:order_id" VALUE="{l.order_id}">
+			<MvASSIGN Name="l.field:time" VALUE="{s.time_t}">
+			<MvIF EXPR="{l.jsonval:success GT 0}">
+				<MvASSIGN Name="l.field:status" VALUE="{1}">
+				<MvDO file = "{g.Module_Library_DB}"                name = "l.success" 	VALUE = "{Module_Load_Code_Cached('customfields', l.module )}">
+                <MvDO file = "{g.Module_Root $ l.module:module }"   name = "l.null"     VALUE = "{ Module_Order_Set_Field( l.module, l.order:id,'zinrelo_soid', l.order_id) }">
+			<MvELSE>
+				<MvASSIGN Name="l.field:status" VALUE="{0}">
+			</MvIF>
+			<MvASSIGN Name="l.logInsert" value="{Zinrelo_Order_API_Log_Insert(l.field)}">		
+
+		</MvIF>
+	</MvIF>
+	<MvFUNCTIONRETURN VALUE = "1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_Create_Award" PARAMETERS = "awardId,awardPoints,awardDesc" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+		<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+		<MvIF EXPR="{l.fields[1]:enablem AND l.awardId}">		
+				<MvIF EXPR="{g.Customer:pw_email}">
+					<MvASSIGN NAME="l.user_email"  value="{g.Customer:pw_email}">
+				<MvELSE>
+					<MvASSIGN NAME = "l.user_email"	VALUE = "{l.order:bill_email}">	
+				</MvIF>
+				<MvASSIGN NAME = "l.activity_id"	VALUE = "{l.awardId}">
+				<MvASSIGN NAME = "l.reason"			VALUE = "{l.awardDesc}">
+				<MvASSIGN NAME = "l.points_passed"	VALUE = "{l.awardPoints}">
+				<MvASSIGN NAME = "g.headers" value = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+				<MvASSIGN NAME = "g.headers" value = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+				<Mvcall method="POST" 
+						HEADERS= "{ g.headers }"  
+						action="https://api.zinrelo.com/v1/loyalty/award" 
+						fields="l.user_email,l.activity_id,l.reason,l.points_passed">
+						<MvASSIGN Name="l.returnMessage" value= "{l.returnMessage$s.callvalue}" />
+				</Mvcall>
+				<MvASSIGN NAME="l.json" value="{miva_json_decode(l.returnMessage, l.jsonval)}">
+				<MvExport file="zinrelo_debug.dat" fields="l.order_id$'='l.returnMessage" delimiter="|">
+		</MvIF>
+	<MvFUNCTIONRETURN VALUE = "1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_Order_Delete" PARAMETERS = "order_id,oitem" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+		
+		<MvIF EXPR="{l.order_id}">
+			
+			<MvASSIGN NAME = "l.zinrelo_soid"    VALUE = "{ Zinrelo_Order_CustomField_Order_Id('zinrelo_soid',l.order_id) }">
+			<MvIF EXPR="{l.zinrelo_soid}">
+				<MvASSIGN NAME = "l.order_id"    VALUE = "{l.zinrelo_soid}">
+			</MvIF>
+
+			<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+			<MvIF EXPR="{l.fields[1]:enablem}">	
+				<MvASSIGN NAME = "g.headers" VALUE = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+				<MvASSIGN NAME = "g.headers" VALUE = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+				
+				<MvIF EXPR="{l.oitem:code}">
+					<MvASSIGN NAME ="l.returned_amount" value="{l.oitem:price*l.oitem:quantity}">	
+					<MvASSIGN NAME ="l.returned_product_id" value="{l.oitem:code}">
+					<MvASSIGN NAME ="l.quantity" value="{l.oitem:quantity}">
+					
+					<Mvcall method="POST" 
+						HEADERS= "{ g.headers }"  
+						action="https://api.zinrelo.com/v1/loyalty/transaction/return" 
+						fields="l.order_id,l.returned_amount,l.returned_product_id,l.quantity">
+						
+						<MvASSIGN Name="l.returnMessage" VALUE= "{s.callvalue}" />
+					</Mvcall>
+					
+				<MvELSE>
+					
+					<Mvcall method="POST" 
+						HEADERS= "{ g.headers }"  
+						action="https://api.zinrelo.com/v1/loyalty/transaction/return" 
+						fields="l.order_id">
+						
+						<MvASSIGN Name="l.returnMessage" VALUE= "{s.callvalue}" />
+					</Mvcall>
+				
+				</MvIF>
+
+				<MvExport file="zinrelo_debug.dat" fields="l.order_id$'='$l.returnMessage" delimiter="|">
+
+			</MvIF>
+		</MvIF>
+		
+	<MvFUNCTIONRETURN VALUE = "1">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_Order_Delete_Points" PARAMETERS = "order_id" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+
+	<MvIF EXPR="{l.order_id}">
+			
+		<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+		<MvIF EXPR="{l.fields[1]:enablem}">	
+			<MvASSIGN NAME = "g.headers" VALUE = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+			<MvASSIGN NAME = "g.headers" VALUE = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+			<MvASSIGN NAME="l.checkOrderDiscount" VALUE="{[ g.Module_Library_DB ].OrderChargeList_Load_Order(l.order_id,l.zinordercharges)}">
+			<MvEVAL EXPR="{l.zinordercharges}">
+		    <MvFOREACH ITERATOR = "l.zinordercharge" ARRAY = "l.zinordercharges" INDEX = "l.pos">
+			    <MvASSIGN NAME="l.reward_ids" value="{glosub(l.zinordercharge:type,'zinrelo_','')}">
+				<MvIF EXPR="{'zinrelo_' CIN l.zinordercharge:type}">
+					<Mvcall method="GET" 
+							HEADERS= "{ g.headers }"  
+							action="https://api.zinrelo.com/v1/loyalty/redemptions" 
+							fields="l.reward_ids">
+							<MvASSIGN Name="l.zin_redeem_result" VALUE= "{s.callvalue}" />
+					</Mvcall>
+				</MvIF>	
+				<MvEVAL EXPR="{l.zin_redeem_result}">
+			</MvFOREACH>
+		</MvIF>	
+
+	</MvIF>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "JSON_CustomExp_Encode" PARAMETERS = "string" STANDARDOUTPUTLEVEL = "">
+	<MvFUNCTIONRETURN VALUE = "{ encodejavascriptstring( l.string ) }">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "JSON_CustomExp_Boolean" PARAMETERS = "value" STANDARDOUTPUTLEVEL = "">
+	<MvIF EXPR = "{ l.value }">	<MvFUNCTIONRETURN VALUE = "{'true'}">
+	<MvELSE>					<MvFUNCTIONRETURN VALUE = "{'false'}">
+	</MvIF>
+</MvFUNCTION>
+<MvFUNCTION NAME = "JSON_CustomExp_Response_Error" PARAMETERS = "error_code, error_message" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace">
+	{
+		"success":			0,
+		"error_code":		"<MvEVAL EXPR = "{ JSON_CustomExp_Encode( l.error_code ) }">",
+		"error_message":	"<MvEVAL EXPR = "{ JSON_CustomExp_Encode( l.error_message ) }">"
+	}
+
+	<MvFUNCTIONRETURN VALUE = 0>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "JSON_CustomExp_Response_Success" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace">
+	{
+		"success":	1
+	}
+
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+<MvFUNCTION NAME = "JSON_CustomExp_Response_Start" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace">
+	{
+		"success":	1,
+		"data":
+</MvFUNCTION>
+<MvFUNCTION NAME = "JSON_CustomExp_Item_Response_Start" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace">
+		"data":
+</MvFUNCTION>
+<MvFUNCTION NAME = "JSON_CustomExp_ArrayElement_Start" PARAMETERS = "count var" STANDARDOUTPUTLEVEL = "">
+	<MvIF EXPR = "{ l.count }">
+		<MvEVAL EXPR = ",">
+	</MvIF>
+
+	<MvASSIGN NAME = "l.count" VALUE = "{ l.count + 1 }">
+	<MvEVAL EXPR = "\{">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "JSON_CustomExp_ArrayElement_End" STANDARDOUTPUTLEVEL = "">
+	<MvEVAL EXPR = "}">
+</MvFUNCTION>
+<MvFUNCTION NAME = "JSON_CustomExp_Order_Load_ID" PARAMETERS="Order_ID" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace">
+	<MvASSIGN NAME = "g.Order_ID" VALUE = "{ int( l.Order_ID ) }">
+
+	<MvIF EXPR = "{ NOT [ g.Library_DB ].Order_Load_ID( g.Order_ID, l.order ) }">
+		<MvIF EXPR = "{ [ g.Library_DB ].Error_Is_EOF() }">
+			<MvFUNCTIONRETURN VALUE = "{ JSON_CustomExp_Response_Error( 'MER-JSN-ORD-00025', 'Order #' $ g.Order_ID $ ' not found' ) }">
+		</MvIF>
+
+		<MvFUNCTIONRETURN VALUE = "{ JSON_CustomExp_Response_Error( g.Error_Code, g.Error_Message ) }">
+	</MvIF>
+	<mvt:do file="g.Module_JSON" name="l.jsonData" value="JSON_Order( l.order )" />
+
+	<MvEVAL EXPR = "{ JSON_CustomExp_Response_Start() }">
+	{
+		<MvEVAL EXPR = "{ l.jsonData }">
+	}
+	<MvFUNCTIONRETURN VALUE = "{ JSON_CustomExp_Response_End() }">
+</MvFUNCTION>
+<MvFUNCTION NAME = "JSON_CustomExp_Response_End" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace">
+	}
+
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "JSON_CustomExp_Order_OnDemandColumns" PARAMETERS = "order var" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace">
+	
+	<MvASSIGN NAME="l.comma" value = "{','}">
+	<MvASSIGN NAME="l.jsonData" value = "{'['}">
+	<MvOPENVIEW NAME = "Merchant" VIEW = "OrderItems" QUERY= "{'SELECT * FROM ' $ g.Store_Table_Prefix $ 'OrderItems WHERE status < 201 and order_id= ' $ l.order:id $ ' ORDER BY line_id ASC'}">
+	<MvIF EXPR = "{ g.MvOPENVIEW_Error}">
+		<MvFUNCTIONRETURN VALUE = "{ JSON_CustomExp_Response_Error( 'MER-JSN-ORD-00030', g.MvOPENVIEW_Error )}">
+	</MvIF>
+	<MvASSIGN NAME = "l.orderitem_count"		VALUE = 0>
+		<MvWHILE EXPR = "{ NOT OrderItems.d.EOF}">
+				<MvIF EXPR="{l.orderitem_count GT 0}">
+					<MvASSIGN NAME="l.jsonData" value = "{l.jsonData$','}">
+				</MvIF>
+				<MvASSIGN NAME="l.jsonData" value = "{l.jsonData$'{'}">
+					<MvASSIGN NAME	= "l.productimage" 	VALUE =	"">
+					<MvASSIGN NAME 	= "l.producturl" 	VALUE = "{[g.Module_Feature_URI_UT ].Store_Product_Code_URL( OrderItems.d.code, l.flags ) }"> 	
+					<MvASSIGN NAME	= "l.success"  		VALUE =	"{[g.Module_Library_DB ].ProductImage_Load_Type(OrderItems.d.product_id, 1, l.imagetype)}" />
+					<MvASSIGN NAME	= "l.success"  		VALUE =	"{[g.Module_Library_DB ].Image_Load_ID(l.imagetype:image_id, l.imagedata)}" />
+					<MvIF EXPR="{l.imagedata:image}">
+						<MvASSIGN NAME	= "l.productimage" 	VALUE =	"{g.baseurl $ l.imagedata:image}">
+					<MvELSE>
+						<MvDO NAME="l.success" FILE = "{g.Module_Library_DB}" VALUE="{Product_Load_Code(OrderItems.d.code, l.zinreloproddata ) }">
+						<MvASSIGN NAME	= "l.productimage" 	VALUE =	"{g.baseurl $ l.zinreloproddata:image}">
+					</MvIF>
+					<MvASSIGN NAME	= "l.productcats" 	VALUE =	"{Zinrelo_CategoryList_Load_Product(OrderItems.d.product_id)}">
+					<MvASSIGN NAME	= "l.jsonData" 		VALUE = "{l.jsonData$'"product_id":"'$ JSON_CustomExp_Encode( OrderItems.d.code ) $'"'$l.comma}">
+					<MvASSIGN NAME	= "l.jsonData" 		VALUE = "{l.jsonData$'"title":"'$ JSON_CustomExp_Encode( OrderItems.d.name ) $'"'$l.comma}">
+					<MvASSIGN NAME	= "l.jsonData" 		VALUE = "{l.jsonData$'"img_url":"'$l.productimage$'"'$l.comma}">
+					<MvASSIGN NAME	= "l.jsonData" 		VALUE = "{l.jsonData$'"category":"'$ JSON_CustomExp_Encode(l.productcats) $'"'$l.comma}">
+					<MvASSIGN NAME	= "l.jsonData" 		VALUE = "{l.jsonData$'"tags":""'$l.comma}">
+					<MvASSIGN NAME	= "l.jsonData" 		VALUE = "{l.jsonData$'"price":"'$ JSON_CustomExp_Encode( OrderItems.d.price ) $'"'$l.comma}">
+					<MvASSIGN NAME	= "l.jsonData" 		VALUE = "{l.jsonData$'"url":"'$ l.producturl $'"'$l.comma}">
+					<MvASSIGN NAME	= "l.jsonData" 		VALUE = "{l.jsonData$'"quantity":"'$OrderItems.d.quantity$'"'}">
+				<MvASSIGN NAME="l.jsonData" value = "{l.jsonData$'}'}">
+			<MvSKIP NAME = "Merchant" VIEW = "OrderItems" ROWS = 1>
+			<MvASSIGN NAME = "l.orderitem_count"		VALUE = "{l.orderitem_count+1}">
+		</MvWHILE>
+		<MvCLOSEVIEW NAME = "Merchant" VIEW = "OrderItems">
+	<MvASSIGN NAME="l.jsonData" value = "{l.jsonData$']'}">
+	<MvFUNCTIONRETURN VALUE = "{l.jsonData}">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_Order_API_Log_Insert" PARAMETERS = "field var" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+	<MvASSIGN NAME="l.orderExist" value="{Zinrelo_API_Log_Count(l.field:order_id)}">
+	<MvIF EXPR="{l.orderExist EQ 0}">
+		<MvQUERY NAME   = "Merchant"
+					 QUERY  = "{ 'INSERT INTO ' $  g.Store_Table_Prefix $ 'Zinrelo_OrderExport_Log (order_id,exp_date,status)
+					 VALUES  (?,?,?)' }"
+					 FIELDS = "l.field:order_id,l.field:time,l.field:status">           
+	</MvIF>
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION>
+<MvFUNCTION NAME = "Zinrelo_API_SettingsDB_Read" PARAMETERS = "field var" STANDARDOUTPUTLEVEL = "">
+	<MvASSIGN NAME = "l.field:id"   VALUE = "{ Zinrelo_API_SettingsdbItem.d.id }">
+	<MvASSIGN NAME = "l.field:url" VALUE = "{ Zinrelo_API_SettingsdbItem.d.url }">
+	<MvASSIGN NAME = "l.field:sub_id" VALUE = "{ Zinrelo_API_SettingsdbItem.d.sub_id}">
+	<MvASSIGN NAME = "l.field:apiuser" VALUE = "{ Zinrelo_API_SettingsdbItem.d.apiuser}">
+	<MvASSIGN NAME = "l.field:apipass" VALUE = "{ Zinrelo_API_SettingsdbItem.d.apipass}">
+	<MvASSIGN NAME = "l.field:enablem" VALUE = "{ Zinrelo_API_SettingsdbItem.d.enablem}">
+</MvFUNCTION>
+<MvFUNCTION NAME = "Zinrelo_API_SettingsDBList_Load_All" PARAMETERS = "fields var" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+	<MvOPENVIEW NAME    = "Merchant"
+	VIEW    = "Zinrelo_API_SettingsdbItem"
+	QUERY   = "{ 'SELECT * FROM ' $ g.Store_Table_Prefix $ 'Zinrelo_API_Settings ORDER BY id' }">
+		<MvIF EXPR = "{ g.MvOPENVIEW_Error }">
+			<MvFUNCTIONRETURN VALUE = "{ [ g.Module_Library_Utilities ].Error( 'MER-UTL-CST-00014', g.MvOPENVIEW_Error ) }">
+		</MvIF>
+		<MvASSIGN NAME = "l.field_count"        VALUE = 0>
+		<MvWHILE EXPR = "{ NOT Zinrelo_API_SettingsdbItem.d.EOF }">
+			<MvASSIGN NAME = "l.field_count"    VALUE = "{ l.field_count + 1 }">
+
+				<MvEVAL EXPR = "{ Zinrelo_API_SettingsDB_Read( l.fields[ l.field_count ] ) }">
+				<MvSKIP NAME = "Merchant" VIEW = "Zinrelo_API_SettingsdbItem" ROWS = 1>
+		</MvWHILE>
+
+		<MvCLOSEVIEW NAME = "Merchant" VIEW = "Zinrelo_API_SettingsdbItem">
+		<MvFUNCTIONRETURN VALUE = "{ [ g.Module_Library_DB ].ListLoad_EOF_Return( 'MER-UTL-CST-00080', l.field_count ) }">
+</MvFUNCTION>
+<MvFUNCTION NAME = "Zinrelo_API_Settings_Update" PARAMETERS = "field var" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+	<MvQUERY NAME   = "Merchant"
+		QUERY   = "{ 'UPDATE ' $ g.Store_Table_Prefix $ 'Zinrelo_API_Settings
+		SET
+		url  = ?,
+		sub_id = ?,
+		apiuser = ?,
+		apipass = ?,
+		enablem = ?
+		WHERE
+		id      = ?' }"
+		FIELDS  = "l.field:url, l.field:sub_id, l.field:apiuser, l.field:apipass, l.field:enablem,g.Zinrelo_API_SettingsEdit">
+	<MvIF EXPR = "{ g.MvQUERY_Error }">
+		<MvFUNCTIONRETURN VALUE = "{ [ g.Module_Library_Utilities ].Error( 'Error in update', g.MvQUERY_Error ) }">
+	</MvIF>            
+	<MvFUNCTIONRETURN VALUE = 1>
+</MvFUNCTION> 
+<MvFUNCTION NAME = "Zinrelo_API_Log_Count" PARAMETERS = "order_id" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+<MvOPENVIEW NAME	= "Merchant"
+VIEW	= "Zinrelo_API_Log_Count"
+QUERY	= "{ 'SELECT COUNT( * ) AS field_count FROM ' $ g.Store_Table_Prefix $ 'Zinrelo_OrderExport_Log where order_id=?' }" FIELDS  = "l.order_id">
+	<MvIF EXPR = "{ Zinrelo_API_Log_Count.d.EOF }">
+		<MvCLOSEVIEW NAME = "Merchant" VIEW = "Zinrelo_API_Log_Count">
+			<MvFUNCTIONRETURN VALUE = 0>
+	</MvIF>
+
+	<MvASSIGN NAME = "l.field_count" VALUE = "{ Zinrelo_API_Log_Count.d.field_count }">
+		<MvCLOSEVIEW NAME = "Merchant" VIEW = "Zinrelo_API_Log_Count">
+
+			<MvFUNCTIONRETURN VALUE = "{ l.field_count }">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_API_Store_Table_Exists" PARAMETERS = "table" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+    <MIVA MvOPENVIEW_Error = "nonfatal, nodisplay">
+    <MvOPENVIEW NAME    = "Merchant"
+                VIEW    = "Database_Select_Check"
+                QUERY   = "{ 'Select COUNT(*) FROM ' $ l.table }">
+     <MvIF EXPR = "{ g.MvOPENVIEW_Error }">
+        <MvFUNCTIONRETURN VALUE = "{ 0 }">
+    </MvIF>
+    <MvCLOSEVIEW NAME = "Merchant" VIEW = "Database_Select_Check">
+    <MvFUNCTIONRETURN VALUE = "{ 1 }">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_CategoryList_Load_Product" PARAMETERS = "product_id" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+	<MvOPENVIEW NAME	= "Merchant"
+				VIEW	= "Categories"
+				QUERY	= "{ 'SELECT
+								cat.*
+							  FROM
+								' $ g.Store_Table_Prefix $ 'Categories cat,
+								' $ g.Store_Table_Prefix $ 'CategoryXProduct cxp
+							  WHERE
+								cxp.product_id	= ? AND
+								cat.id			= cxp.cat_id
+							  ORDER BY
+								cat.disp_order ASC' }"
+				FIELDS	= "l.product_id">
+	<MvIF EXPR = "{ g.MvOPENVIEW_Error }">
+		<MvFUNCTIONRETURN VALUE = "{  [ g.Library_Filename_Utilities ].Error( 'MER-DBE-CTG-00041', g.MvOPENVIEW_Error ) }">
+	</MvIF>
+	<MvASSIGN NAME = "l.cats"	VALUE ="">
+	<MvASSIGN NAME = "l.category_count"	VALUE = 0>
+
+	<MvWHILE EXPR = "{ NOT Categories.d.EOF }">
+		<MvIF EXPR="{l.category_count}">
+			<MvASSIGN NAME="l.cats" VALUE="{l.cats$','}">
+		</MvIF>
+		<MvASSIGN NAME="l.cats" VALUE="{l.cats$Categories.d.name}">
+		<MvASSIGN NAME="l.category_count" VALUE= "{l.category_count+1}">
+		<MvSKIP NAME = "Merchant" VIEW = "Categories" ROWS = 1>
+	</MvWHILE>
+
+	<MvCLOSEVIEW NAME = "Merchant" VIEW = "Categories">
+	<MvFUNCTIONRETURN VALUE = "{l.cats}">
+</MvFUNCTION>
+
+<MvFUNCTION NAME = "Zinrelo_API_Data_By_RID" PARAMETERS = "key" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">
+		<MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
+		<MvASSIGN NAME = "l.redemption_ids"  value = "{glosub(l.key,'zinrelo_','')}">
+		<MvASSIGN NAME = "g.headers" VALUE = "{ 'partner-id:'$ l.fields[1]:apiuser  $ asciichar( 13 ) $ asciichar( 10 ) }">
+		<MvASSIGN NAME = "g.headers" VALUE = "{ g.headers $ 'api-key:' $ l.fields[1]:apipass $ asciichar( 13 ) $ asciichar( 10 ) }" />
+		<Mvcall method="GET" 
+				HEADERS= "{ g.headers }"  
+				action="https://api.zinrelo.com/v1/loyalty/redemptions" 
+				fields="l.redemption_ids">
+				<MvASSIGN Name="l.zin_redeem_result" VALUE= "{s.callvalue}" />
+		</Mvcall>
+		<MvAssign name="l.result" value="{miva_json_decode(l.zin_redeem_result, l.rewardjson)}">
+		<MvIF EXPR="{l.rewardjson:data}">	
+			<MvFUNCTIONRETURN VALUE = "{l.rewardjson:data}">
+		</MvIF>
+    <MvFUNCTIONRETURN VALUE = "0">
+</MvFUNCTION>
+
+
+<MvFUNCTION NAME = "Zinrelo_Order_CustomField_Order_Id" PARAMETERS = "CustomField,order_id" STANDARDOUTPUTLEVEL = "" ERROROUTPUTLEVEL = "">  
+    <MvASSIGN NAME = "l.frcustcfvalue" VALUE = "0">
+    <MvOPENVIEW NAME= "Merchant"  VIEW= "cust_custom_field_value" QUERY  = "{'select cpv.value from '$ g.Store_Table_Prefix $ 'CFM_OrderValues as cpv JOIN '$ g.Store_Table_Prefix $ 'CFM_OrderFields cpf on cpv.field_id = cpf.id Where cpf.code=? AND cpv.order_id=?'}"  FIELDS="l.CustomField,l.order_id">
+        <MvIF EXPR = "{ NOT g.MvOPENVIEW_Error }">
+            <MvIF EXPR = "{ NOT cust_custom_field_value.d.EOF }">
+                <MvASSIGN NAME = "l.frcustcfvalue" VALUE = "{ cust_custom_field_value.d.value }">
+            </MvIF>
+        </MvIF>
+    <MvCLOSEVIEW NAME = "Merchant" VIEW = "cust_custom_field_value">
+    <MvFUNCTIONRETURN VALUE = "{l.frcustcfvalue}">
+</MvFUNCTION>
