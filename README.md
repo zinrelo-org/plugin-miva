@@ -1,1 +1,1 @@
-# plugin-miva
+# Zinrelo V2 Plugin
