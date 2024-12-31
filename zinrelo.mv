@@ -621,10 +621,10 @@
               <MvDO file="{g.Module_Library_DB}" name="l.result" value="{Module_Load_Code(l.module:code, l.module)}" />
               <MvASSIGN NAME = "l.basketcharge:basket_id"     VALUE = "{g.Basket:basket_id}">
               <MvASSIGN NAME = "l.basketcharge:module_id"     VALUE = "{l.module:id}">
-              <MvASSIGN NAME = "l.basketcharge:type"        VALUE = "{l.discountcode}">
-              <MvASSIGN NAME = "l.basketcharge:descrip"     VALUE = "{l.datavalue:reward_name}">
+              <MvASSIGN NAME = "l.basketcharge:type"          VALUE = "{l.discountcode}">
+              <MvASSIGN NAME = "l.basketcharge:descrip"       VALUE = "{l.datavalue:reward_name}">
               <MvASSIGN NAME = "l.basketcharge:tax_exempt"    VALUE = "{ 0 }">
-              <MvASSIGN NAME = "l.basketcharge:amount"      VALUE = "{ '-'$l.ebis_amount }">
+              <MvASSIGN NAME = "l.basketcharge:amount"        VALUE = "{ '-'$l.ebis_amount }">
               <MvASSIGN NAME = "l.basketcharge:disp_amt"      VALUE = "{ '-'$l.ebis_amount }">
               <MvIF EXPR="{l.ebis_amount GT l.formatted_total}">
                 <MvCOMMENT><MvASSIGN NAME="g.zin_redeem_status" VALUE="Reward value cannot be greater that Basket amount."></MvCOMMENT>
@@ -1515,16 +1515,22 @@
   				    </MvCAPTURE>
 				   	  <MIVA STANDARDOUTPUTLEVEL = "">
 
-					   <Mvcall method="RAW" 
+					    <Mvcall method="RAW" 
 				        HEADERS= "{ g.headers }"  
 				        action="{'https://api.zinrelo.com/v2/loyalty/transactions/redeem'}" CONTENT-TYPE = "application/json"  fields="l.jsonPayLoad">
 				        <MvASSIGN Name="l.zin_order_coupon" VALUE= "{l.zin_order_coupon $ s.callvalue}" />
 				      </Mvcall>
 
+              <MvASSIGN NAME = "l.ordercoupon:order_id"   VALUE = "{ l.order_id }">
+              <MvASSIGN NAME = "l.ordercoupon:total"      VALUE = "{ glosub(l.zinordercharge:amount, '-', '') }">
+
 				      <MvAssign name="l.result" value="{miva_json_decode(l.zin_order_coupon, l.rewardcouponjson)}">
 				      <MvIF EXPR="{l.rewardcouponjson:data:reward_info:coupon_code}"> 
+                <MvASSIGN NAME = "l.ordercoupon:code"       VALUE = "{l.rewardcouponjson:data:reward_info:coupon_code}">
+                <MvASSIGN NAME = "l.ordercoupon:descrip"    VALUE = "{l.rewardcouponjson:data:reward_info:coupon_code}">
 				     	  <MvDO file="{g.Module_Feature_PGR_DB}" name="l.successc" value="{Coupon_Load_Code(l.rewardcouponjson:data:reward_info:coupon_code, l.existing_coupon)}">
   				     	<MvIF EXPR="{l.existing_coupon}">
+                   <MvASSIGN NAME = "l.ordercoupon:coupon_id"     VALUE = "{ l.existing_coupon:id }">
   				     		 <MvASSIGN NAME = "l.couponxshopper:coupon_id"	VALUE = "{ l.existing_coupon:id }">
   							   <MvASSIGN NAME = "l.couponxshopper:cust_id"		VALUE = "{ l.order:cust_id }">
   							   <MvASSIGN NAME = "l.couponxshopper:use_count"	VALUE = 1>
@@ -1535,6 +1541,9 @@
     								</MvIF>
     							</MvIF>
   				     	</MvIF>
+
+                <MvDO file="{g.Module_Feature_PGR_DB}" name="l.successci" value="{OrderCoupon_Insert(l.ordercoupon)}">
+
 				      </MvIF>
 				    </MvIF>
 		    </MvFOREACH>
