@@ -205,10 +205,11 @@
   </MvCOMMENT>
   <MvIF EXPR = "{ l.tab EQ 'ZinreloAPI'}">
 
+    <MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
     <MvIF EXPR="{g.Zinrelo_API_SettingsEdit}">
 
-        <MvIF EXPR="{ISNULL trim(g.Zinrelo_API_Settings:url)}">
-  	      <MvASSIGN NAME = "g.Zinrelo_API_Settings:url"          VALUE = "{Zinrelo_Update_WebHookURL()}">
+        <MvIF EXPR="{trim(g.Zinrelo_API_Settings:url) EQ '' OR l.fields[1]:pid NE trim(g.Zinrelo_API_Settings:pid) OR l.fields[1]:apikey NE trim(g.Zinrelo_API_Settings:apikey)}">
+           <MvASSIGN NAME = "g.Zinrelo_API_Settings:url"          VALUE = "{Zinrelo_Update_WebHookURL(g.Zinrelo_API_Settings:pid,g.Zinrelo_API_Settings:apikey)}">
         </MvIF>
 
       	<MvASSIGN NAME = "l.field:url"       	  VALUE = "{ g.Zinrelo_API_Settings:url }">
@@ -229,6 +230,7 @@
       	<MvELSE>
       		
       	</MvIF>
+        <MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
     </MvIF>
     <style>
       .apiorderbutton{background: #1eabbd;border-color: #2ebbcd;border:0px;padding:8px 15px;color:#fff;border-radius:3px;cursor:pointer}
@@ -275,7 +277,6 @@
       
     //-->
     </script>
-    <MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
     <table width="100%"  border="0" cellpadding="0" cellspacing="0" class="tabledetails">
       <tr>
         <td>&nbsp;</td>
@@ -1570,11 +1571,11 @@
 
 
 
-<MvFUNCTION NAME = "Zinrelo_Update_WebHookURL" PARAMETERS = "" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace" ERROROUTPUTLEVEL = "">
+<MvFUNCTION NAME = "Zinrelo_Update_WebHookURL" PARAMETERS = "pid,apikey" STANDARDOUTPUTLEVEL = "text, html, compresswhitespace" ERROROUTPUTLEVEL = "">
   <MvASSIGN NAME = "l.field_count"    VALUE = "{ Zinrelo_API_SettingsDBList_Load_All( l.fields ) }">
-    <MvIF EXPR="{Zinrelo_Get_API_Token('Zinrelo API') AND ISNULL l.fields[1]:url}">
-      <MvASSIGN NAME = "g.headers"    VALUE = "{ 'partner-id:'$ l.fields[1]:pid  $ asciichar( 13 ) $ asciichar( 10 ) }">
-      <MvASSIGN NAME = "g.headers"    VALUE = "{ g.headers $ 'api-key:' $ l.fields[1]:apikey $ asciichar( 13 ) $ asciichar( 10 ) }" />
+    <MvIF EXPR="{Zinrelo_Get_API_Token('Zinrelo API')}">
+      <MvASSIGN NAME = "g.headers"    VALUE = "{ 'partner-id:'$ l.pid  $ asciichar( 13 ) $ asciichar( 10 ) }">
+      <MvASSIGN NAME = "g.headers"    VALUE = "{ g.headers $ 'api-key:' $ l.apikey $ asciichar( 13 ) $ asciichar( 10 ) }" />
       <MvASSIGN NAME = "g.headers"    VALUE = "{ g.headers $ 'accept:application/json' $ asciichar( 13 ) $ asciichar( 10 ) }" />
       <MvCAPTURE VARIABLE="l.jsonPayLoad">
         {
@@ -1582,7 +1583,7 @@
           "config": {
   	        "events":["order_created","order_processing","order_shipped","order_returned_partially","order_cancelled","order_returned_fully"],
   	        "api_token": "<MvEVAL EXPR="{Zinrelo_Get_API_Token('Zinrelo API')}">",
-  	        "zinrelo_api_key": "<MvEVAL EXPR="{l.fields[1]:apikey}">",
+  	        "zinrelo_api_key": "<MvEVAL EXPR="{l.apikey}">",
   	        "endpoint_url": "<MvEVAL EXPR="{gettoken(g.json_url,'?',1)}">",
   	        "store_code": "<MvEVAL EXPR="{g.store_code}">"
   	    },
@@ -1599,7 +1600,7 @@
         <MvFUNCTIONRETURN VALUE = "{l.rewardjson:data:config:zif_config:workflow_url}">
       </MvIF>
     </MvIF>
-  <MvFUNCTIONRETURN VALUE = "0">
+    <MvFUNCTIONRETURN VALUE = "">
 </MvFUNCTION>
 
 <MvFUNCTION NAME = "createJwt" PARAMETERS = "member_id, key, keyi, data">
